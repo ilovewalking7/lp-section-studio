@@ -76,7 +76,7 @@ describe("buildLpDocument", () => {
     expect(html).not.toContain("月白の宿");
     expect(html).toContain("Made with ミセテLP");
     expect(html).not.toContain("og:title");
-    expect(html).toContain("cdn.tailwindcss.com");
+    expect(html).not.toContain("cdn.tailwindcss.com");
   });
 
   it("pro: バッジなし・OGPあり", async () => {
@@ -87,7 +87,55 @@ describe("buildLpDocument", () => {
     expect(html).not.toContain("月白の宿");
     expect(html).not.toContain("Made with ミセテLP");
     expect(html).toContain("og:title");
-    expect(html).toContain("cdn.tailwindcss.com");
+    expect(html).not.toContain("cdn.tailwindcss.com");
+  });
+
+  it("Tailwind CDN非依存: コンパイル済みCSSがインライン埋め込み・Google Fontsのlinkあり", async () => {
+    const html = await buildLpDocument(ryokanTemplate, customAnswers, {
+      pro: false,
+    });
+    expect(html).not.toContain("cdn.tailwindcss.com");
+    expect(html).toContain("fonts.googleapis.com");
+    // CSSはセレクタのエスケープ（例: .gap-1\.5）でバックスラッシュを含むため、
+    // 除去してから存在確認する（font-mincho 自体には特殊文字が無く影響は受けない）。
+    expect(html.replace(/\\/g, "")).toContain("font-mincho");
+  });
+
+  it("バッジはフッター要素の内側（</footer>の直前）に挿入される", async () => {
+    const html = await buildLpDocument(ryokanTemplate, customAnswers, {
+      pro: false,
+    });
+    const madeWithIdx = html.indexOf("Made with");
+    const lastFooterOpenIdx = html.lastIndexOf("<footer");
+    const lastFooterCloseIdx = html.lastIndexOf("</footer>");
+    expect(madeWithIdx).toBeGreaterThan(-1);
+    expect(lastFooterOpenIdx).toBeGreaterThan(-1);
+    expect(madeWithIdx).toBeGreaterThan(lastFooterOpenIdx);
+    expect(madeWithIdx).toBeLessThan(lastFooterCloseIdx);
+  });
+
+  it("CTAリンク化: ctaHref が tel: のとき <a href=\"tel:...\"> に変換され、ボタンは残らない", async () => {
+    const answers: LpAnswers = { ...customAnswers, ctaHref: "tel:0460-00-0000" };
+    const html = await buildLpDocument(ryokanTemplate, answers, { pro: false });
+    expect(html).toContain("<a");
+    expect(html).toContain('href="tel:0460-00-0000"');
+    // ctaLabel を内包する <button>...</button> が1件も残っていないこと（ボタン単位で判定。
+    // 単純な非貪欲マッチを文書全体に掛けると別々のボタンをまたいで誤マッチしうるため）
+    const buttonInners = [...html.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)].map(
+      (m) => m[1]
+    );
+    expect(buttonInners.some((inner) => inner.includes("ご予約はこちら"))).toBe(
+      false
+    );
+  });
+
+  it("CTAリンク化: ctaHref が不許可スキーム(javascript:)のときは変換しない", async () => {
+    const answers: LpAnswers = {
+      ...customAnswers,
+      ctaHref: "javascript:alert(1)",
+    };
+    const html = await buildLpDocument(ryokanTemplate, answers, { pro: false });
+    expect(html).not.toContain("javascript:");
   });
 });
 
