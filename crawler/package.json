@@ -1,0 +1,21 @@
+{
+  "name": "research-crawler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "設定駆動の Crawlee クローラ（robots.txt 尊重 + レート制限）。調査用のアドホックなデータ収集を、ジョブ設定(JSON)を渡すだけで実行する。",
+  "bin": {
+    "crawl": "src/crawl.mjs"
+  },
+  "scripts": {
+    "crawl": "node src/crawl.mjs",
+    "demo": "node src/crawl.mjs jobs/pypi-demo.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "crawlee": "^3.17.0",
+    "playwright": "^1.49.0"
+  }
+}

@@ -1,0 +1,6 @@
+# Crawlee 実行時ストレージ（RequestQueue / Dataset / KeyValueStore）
+storage/
+# 取得データ（利用者が集計・分析する成果物。リポジトリには載せない）
+output/
+# 依存
+node_modules/

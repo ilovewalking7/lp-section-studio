@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Build output
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+*.log
+
+# Claude Code local (session-specific) settings — keep out of version control
+.claude/settings.local.json
+
+# 配信用レジストリ（npm run build / npm run registry で生成）
+public/r/

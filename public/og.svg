@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="LP Section Studio">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0712"/>
+      <stop offset="0.55" stop-color="#0b1022"/>
+      <stop offset="1" stop-color="#06080f"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="0.5" stop-color="#e879f9"/>
+      <stop offset="1" stop-color="#818cf8"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7c3aed" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="240" cy="120" r="360" fill="url(#glowA)"/>
+  <circle cx="1010" cy="560" r="340" fill="url(#glowB)"/>
+
+  <!-- subtle grid -->
+  <g stroke="#38bdf8" stroke-opacity="0.06" stroke-width="1">
+    <path d="M0 78 H1200 M0 156 H1200 M0 234 H1200 M0 312 H1200 M0 390 H1200 M0 468 H1200 M0 546 H1200"/>
+    <path d="M100 0 V630 M250 0 V630 M400 0 V630 M550 0 V630 M700 0 V630 M850 0 V630 M1000 0 V630 M1150 0 V630"/>
+  </g>
+
+  <!-- logo mark -->
+  <g transform="translate(96,96)">
+    <rect x="0" y="0" width="72" height="72" rx="18" fill="url(#brand)"/>
+    <g fill="none" stroke="#0a0712" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="20" y="20" width="14" height="14" rx="3"/>
+      <rect x="38" y="20" width="14" height="14" rx="3"/>
+      <rect x="20" y="38" width="14" height="14" rx="3"/>
+      <rect x="38" y="38" width="14" height="14" rx="3"/>
+    </g>
+    <text x="92" y="48" font-family="'Segoe UI', system-ui, sans-serif" font-size="30" font-weight="700" fill="#e2e8f0">LP Section Studio</text>
+  </g>
+
+  <!-- headline -->
+  <text x="96" y="300" font-family="'Segoe UI', system-ui, sans-serif" font-size="78" font-weight="800" fill="#f8fafc">Assemble your</text>
+  <text x="96" y="392" font-family="'Segoe UI', system-ui, sans-serif" font-size="78" font-weight="800" fill="url(#brand)">landing page.</text>
+
+  <!-- subtitle -->
+  <text x="98" y="452" font-family="'Segoe UI', system-ui, sans-serif" font-size="30" font-weight="400" fill="#94a3b8">Copy-paste LP sections &amp; animated 3D parts. Zero dependencies.</text>
+
+  <!-- stat chips -->
+  <g font-family="'Segoe UI', system-ui, sans-serif" font-weight="700">
+    <g transform="translate(96,512)">
+      <rect width="232" height="74" rx="16" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+      <text x="24" y="34" font-size="34" fill="#c4b5fd">880+</text>
+      <text x="24" y="60" font-size="17" font-weight="400" fill="#94a3b8">sections</text>
+    </g>
+    <g transform="translate(344,512)">
+      <rect width="200" height="74" rx="16" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+      <text x="24" y="34" font-size="34" fill="#67e8f9">13</text>
+      <text x="24" y="60" font-size="17" font-weight="400" fill="#94a3b8">styles + 3D</text>
+    </g>
+    <g transform="translate(560,512)">
+      <rect width="232" height="74" rx="16" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+      <text x="24" y="34" font-size="34" fill="#86efac">SEO-ready</text>
+      <text x="24" y="60" font-size="17" font-weight="400" fill="#94a3b8">CSS-first 3D</text>
+    </g>
+  </g>
+</svg>

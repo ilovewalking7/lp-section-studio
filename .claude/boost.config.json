@@ -1,0 +1,68 @@
+{
+  "_doc": [
+    "BOOST framework parameters. Set activeProfile to match the SESSION model:",
+    "  'fable'  -> Claude Fable 5 session (DEFAULT): team mode - plan/ideate on Fable, implement on Sonnet 5, code-check on Opus 4.8",
+    "  'opus'   -> Claude Opus 4.8 standalone (smaller gap to frontier: lighter redundancy)",
+    "  'sonnet' -> Claude Sonnet 5 standalone (bigger gap: more candidates, more votes, smaller steps)",
+    "mode 'single' keeps every agent/workflow on the session model (the standalone-boost guarantee).",
+    "mode 'team' routes roles to different models via the Agent tool's model option and workflows' args.model:",
+    "  roles.plan   - who plans/ideates/synthesizes (the session main loop; never delegated)",
+    "  roles.build  - model for boost-builder implementation agents",
+    "  roles.review - model for boost-critic / boost-verifier / adversarial-review agents",
+    "Skills read this file when invoked; CLAUDE.md requires reading it before the first T1+ task of the session.",
+    "Workflows can NOT read this file - the invoking skill passes the values via args (see each skill's invocation template).",
+    "Parameter meanings:",
+    "  planCandidates    - independent plan/design candidates generated for T2+ tasks",
+    "  judges            - judge-panel size when scoring candidates (T3 / wide solution space)",
+    "  refuteVotes       - independent skeptic votes per finding/claim in adversarial verification",
+    "  surviveQuorum     - a finding/claim is CONFIRMED only if >= this many votes say it holds",
+    "  reviewLenses      - dimensions every T2+ diff is reviewed under",
+    "  maxUnverifiedSteps- max consecutive edit steps before a mandatory verification checkpoint",
+    "  researchAngles    - parallel search angles for research questions",
+    "  doubleDerivation  - which conclusions must be derived twice via independent routes",
+    "  hardStepEffort    - reasoning effort passed to boost workflows as args.effort for their finder/judge/skeptic stages (final synthesis always runs at xhigh)"
+  ],
+  "activeProfile": "fable",
+  "profiles": {
+    "fable": {
+      "sessionModel": "claude-fable-5",
+      "mode": "team",
+      "roles": { "plan": "fable", "build": "sonnet", "review": "opus" },
+      "planCandidates": 2,
+      "judges": 3,
+      "refuteVotes": 2,
+      "surviveQuorum": 2,
+      "reviewLenses": ["correctness", "edge-cases", "security", "simplicity"],
+      "maxUnverifiedSteps": 2,
+      "researchAngles": 3,
+      "doubleDerivation": "load-bearing-claims-only",
+      "hardStepEffort": "high"
+    },
+    "opus": {
+      "sessionModel": "claude-opus-4-8",
+      "mode": "single",
+      "planCandidates": 2,
+      "judges": 3,
+      "refuteVotes": 2,
+      "surviveQuorum": 2,
+      "reviewLenses": ["correctness", "edge-cases", "security", "simplicity"],
+      "maxUnverifiedSteps": 2,
+      "researchAngles": 3,
+      "doubleDerivation": "load-bearing-claims-only",
+      "hardStepEffort": "high"
+    },
+    "sonnet": {
+      "sessionModel": "claude-sonnet-5",
+      "mode": "single",
+      "planCandidates": 3,
+      "judges": 3,
+      "refuteVotes": 3,
+      "surviveQuorum": 2,
+      "reviewLenses": ["correctness", "edge-cases", "security", "simplicity", "requirements-coverage"],
+      "maxUnverifiedSteps": 1,
+      "researchAngles": 4,
+      "doubleDerivation": "all-key-claims",
+      "hardStepEffort": "xhigh"
+    }
+  }
+}

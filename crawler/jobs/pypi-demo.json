@@ -1,0 +1,21 @@
+{
+  "name": "pypi-demo",
+  "engine": "cheerio",
+  "startUrls": [
+    "https://pypi.org/project/requests/",
+    "https://pypi.org/project/flask/",
+    "https://pypi.org/project/numpy/",
+    "https://pypi.org/project/pandas/",
+    "https://pypi.org/project/crawlee/"
+  ],
+  "maxRequestsPerMinute": 20,
+  "maxConcurrency": 2,
+  "maxRequestsPerCrawl": 10,
+  "respectRobotsTxt": true,
+  "userAgent": "app-035-research-crawler/0.1 (+https://github.com/ilovewalking7/app-035)",
+  "extract": {
+    "name_version": "h1.package-header__name",
+    "summary": ".package-description__summary"
+  },
+  "output": "output/pypi-demo.json"
+}

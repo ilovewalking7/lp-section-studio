@@ -1,0 +1,7 @@
+# LP Section Studio
+User-agent: *
+Allow: /
+# Registry JSON is a machine API (npx shadcn add) — no need to index.
+Disallow: /r/
+
+Sitemap: https://app-035-studio.pages.dev/sitemap.xml

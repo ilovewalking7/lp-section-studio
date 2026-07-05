@@ -1,0 +1,7 @@
+# Cloudflare Pages のビルド出力先を明示し、フレームワーク自動判定の誤り
+# （.vitepress/dist などに化ける問題）を防ぐ。ダッシュボードの「Build output
+# directory」よりこのファイルが優先される。
+# 他リポジトリへ複製する場合は name を各 Pages プロジェクト名に合わせること。
+name = "app-035-studio"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-11-01"
