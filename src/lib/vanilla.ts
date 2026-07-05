@@ -34,7 +34,7 @@ const VOID_ELEMENTS = new Set([
 ]);
 
 /** 1行で出力される静的マークアップを、読みやすくインデント整形する */
-function formatHtml(html: string): string {
+export function formatHtml(html: string): string {
   const tokens = html
     .replace(/>\s+</g, "><")
     .split(/(<[^>]+>)/g)
