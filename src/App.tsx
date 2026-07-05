@@ -88,11 +88,7 @@ export default function App({ ssrRoute }: { ssrRoute?: Route } = {}) {
       </Suspense>
     ) : route === "lp" ? (
       <Suspense fallback={<RouteFallback />}>
-        <LpBuilder
-          plan={plan}
-          onHome={() => go("home")}
-          onPricing={() => go("pricing")}
-        />
+        <LpBuilder onHome={() => go("home")} onPricing={() => go("pricing")} />
       </Suspense>
     ) : route === "pricing" ? (
       <Pricing

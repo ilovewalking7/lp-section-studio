@@ -2,6 +2,7 @@ import { createElement, type ComponentType } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registry } from "@/registry";
 import { escapeHtml, swapHtml } from "./swap";
+import { applyRawSwaps } from "./export";
 import { clinicTemplate, ryokanTemplate, salonTemplate } from "./templates";
 import type { IndustryTemplate } from "./types";
 import lpCss from "./lp.css?raw";
@@ -86,6 +87,29 @@ function describeTemplate(t: IndustryTemplate) {
             remainder,
             `"${swap.from}" が ${demoId} の置換後にも残っている`
           ).not.toContain(swap.from);
+        }
+      }
+    );
+
+    // rawSwaps を持つセクションのみが対象（現状は wafu-noren-nav の暖簾屋号のみ）。
+    // rawSwaps が無いテンプレは it.each の配列が空になり、単にテストケースが0件になる。
+    it.each(
+      t.sections
+        .filter((s) => (s.rawSwaps?.length ?? 0) > 0)
+        .map((s) => [s.demoId, s] as const)
+    )(
+      "%s: rawSwaps の fromHtml がレンダ結果に出現し、適用後は toHtml に置き換わる",
+      async (demoId, section) => {
+        const html = await renderSection(demoId);
+        for (const raw of section.rawSwaps ?? []) {
+          expect(
+            html.includes(raw.fromHtml),
+            `rawSwap の fromHtml が ${demoId} のレンダ結果に見つからない`
+          ).toBe(true);
+
+          const applied = applyRawSwaps(html, section.rawSwaps, t.defaults);
+          expect(applied).toContain(raw.toHtml(t.defaults));
+          expect(applied).not.toContain(raw.fromHtml);
         }
       }
     );

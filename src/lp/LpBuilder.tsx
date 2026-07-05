@@ -4,7 +4,7 @@
  * ビルダーUI・生成LPはともに日本語固定。document.documentElement.lang を
  * マウント中 "ja" に固定し、アンマウントで復元する（LangToggle の影響を受けないため）。
  */
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -38,7 +38,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { isPro, usePlan, type PlanId } from "@/lib/plan";
+import { isPro, type PlanId } from "@/lib/plan";
 import { LP_TEMPLATES } from "./templates";
 import { buildLpDocument, downloadHtml } from "./export";
 import {
@@ -48,6 +48,7 @@ import {
   getMonthExports,
   getStripeLink,
   incMonthExports,
+  useLpPlan,
 } from "./lpPlan";
 import {
   decodeShare,
@@ -140,17 +141,15 @@ function resolveInitialState(): {
 }
 
 interface LpBuilderProps {
-  plan: PlanId;
   onHome: () => void;
   onPricing?: () => void;
 }
 
 export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
-  // プラン状態は既存の usePlan()（src/lib/plan.ts）を内部で直接使う。
-  // App から渡される `plan` プロップは他ルート（Studio/Pricing）と呼び出し形を
-  // 揃えるための受け口だが、ここでの「デモモード: プラン体験切替」を押した瞬間に
-  // このページ自身のゲーティング表示へ反映させたいため、内部フックの値を正とする。
-  const { plan, setPlan } = usePlan();
+  // プラン状態はミセテLP専用の useLpPlan()（src/lp/lpPlan.ts, localStorage "lp:plan"）を
+  // 内部で直接使う。Studio 側の usePlan()（src/lib/plan.ts, "cs:plan"）とはキーが独立した
+  // 別サービスの状態のため混線しない。
+  const { plan, setPlan } = useLpPlan();
   const pro = isPro(plan);
 
   const [initial] = useState(resolveInitialState);
@@ -166,6 +165,7 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
   const [copyingHtml, setCopyingHtml] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const template: IndustryTemplate =
     LP_TEMPLATES.find((t) => t.id === templateId) ?? LP_TEMPLATES[0];
@@ -254,7 +254,12 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
 
   const handleSaveProject = () => {
     const name = projectName.trim() || answers.shopName || "無題のLP";
-    saveProject(name, { t: template.id, a: answers });
+    const ok = saveProject(name, { t: template.id, a: answers });
+    if (!ok) {
+      setSaveError("プロジェクトの保存に失敗しました");
+      return;
+    }
+    setSaveError(null);
     setProjects(listProjects());
     setProjectName(name);
   };
@@ -369,6 +374,7 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
             copyingHtml={copyingHtml}
             copiedShare={copiedShare}
             exportError={exportError}
+            saveError={saveError}
             projects={projects}
             projectName={projectName}
             onProjectNameChange={setProjectName}
@@ -673,6 +679,52 @@ function FormStep({
 /* ステップ3: プレビュー                                                */
 /* ------------------------------------------------------------------ */
 
+interface PreviewErrorBoundaryProps {
+  onReset: () => void;
+  children: ReactNode;
+}
+interface PreviewErrorBoundaryState {
+  hasError: boolean;
+}
+
+/**
+ * プレビュー描画（LpPreview）専用の保険。共有URL・保存済みプロジェクトはいずれも
+ * localStorage/URLという「アプリの外」から来るデータのため、decodeShare の深い形状
+ * 検証をすり抜けたり保存後にスキーマが変わったりした場合、プレビュー配下が予期せぬ
+ * 例外を投げる可能性がある。componentDidCatch で捕まえてアプリ全体を巻き込まず、
+ * 「入力に戻る」導線だけを提示するフォールバックに留める。
+ */
+export class PreviewErrorBoundary extends Component<
+  PreviewErrorBoundaryProps,
+  PreviewErrorBoundaryState
+> {
+  state: PreviewErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): PreviewErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown): void {
+    console.error("プレビューの描画に失敗しました:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="space-y-4 rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-center">
+          <p className="text-sm text-destructive">
+            プレビューの表示に失敗しました。入力に戻ってやり直してください。
+          </p>
+          <Button variant="outline" onClick={this.props.onReset}>
+            入力に戻る
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function PreviewStep({
   template,
   answers,
@@ -723,7 +775,9 @@ function PreviewStep({
           style={{ maxWidth: VIEWPORTS[viewport].width }}
         >
           <div className="overflow-hidden rounded-md border bg-background shadow-sm">
-            <LpPreview template={template} answers={answers} />
+            <PreviewErrorBoundary onReset={onBack}>
+              <LpPreview template={template} answers={answers} />
+            </PreviewErrorBoundary>
           </div>
         </div>
       </div>
@@ -755,6 +809,7 @@ function ExportStep({
   copyingHtml,
   copiedShare,
   exportError,
+  saveError,
   projects,
   projectName,
   onProjectNameChange,
@@ -778,6 +833,7 @@ function ExportStep({
   copyingHtml: boolean;
   copiedShare: boolean;
   exportError: string | null;
+  saveError: string | null;
   projects: SavedProject[];
   projectName: string;
   onProjectNameChange: (v: string) => void;
@@ -894,6 +950,11 @@ function ExportStep({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {saveError && (
+            <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              {saveError}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <Input
               value={projectName}

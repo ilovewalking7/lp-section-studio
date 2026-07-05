@@ -1,9 +1,71 @@
-import type { LpAnswers } from "./types";
+import { LP_TEMPLATES } from "./templates";
+import type { Feature, LpAnswers, PricePlan } from "./types";
 
 /** 共有URLに載せる状態。t = テンプレID、a = 回答一式。 */
 export interface ShareState {
   t: string;
   a: LpAnswers;
+}
+
+/** LpAnswers のうち文字列であるべきフィールド一覧（深い形状検証に使う） */
+const STRING_FIELDS = [
+  "shopName",
+  "area",
+  "tagline",
+  "intro",
+  "phone",
+  "address",
+  "hours",
+  "ctaLabel",
+  "ctaHref",
+] as const satisfies readonly (keyof LpAnswers)[];
+
+function isFeature(v: unknown): v is Feature {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as { title?: unknown }).title === "string" &&
+    typeof (v as { desc?: unknown }).desc === "string"
+  );
+}
+
+function isPricePlan(v: unknown): v is PricePlan {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as { name?: unknown }).name === "string" &&
+    typeof (v as { price?: unknown }).price === "string" &&
+    typeof (v as { desc?: unknown }).desc === "string"
+  );
+}
+
+/**
+ * 共有URLから復元した回答が LpAnswers の形状を満たすか深く検証する。
+ * 共有URLは第三者が手で組み立てて配ることもできるため、型アサーションだけでなく
+ * 実行時に全フィールドの型・配列長まで確認し、1つでも食い違えば false を返す
+ * （呼び出し側はプレビュー描画前に弾けるため、クラッシュを未然に防げる）。
+ */
+function isValidLpAnswers(a: unknown): a is LpAnswers {
+  if (typeof a !== "object" || a === null) return false;
+  const obj = a as Record<string, unknown>;
+  for (const key of STRING_FIELDS) {
+    if (typeof obj[key] !== "string") return false;
+  }
+  if (
+    !Array.isArray(obj.features) ||
+    obj.features.length !== 3 ||
+    !obj.features.every(isFeature)
+  ) {
+    return false;
+  }
+  if (
+    !Array.isArray(obj.plans) ||
+    obj.plans.length !== 3 ||
+    !obj.plans.every(isPricePlan)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /** 保存済みプロジェクト1件（localStorage "misete:projects" の配列要素） */
@@ -41,22 +103,26 @@ export function encodeShare(s: ShareState): string {
   return bytesToBase64Url(bytes);
 }
 
-/** base64url 文字列から共有状態を復元する。壊れたデータでも例外を投げず null を返す。 */
+/**
+ * base64url 文字列から共有状態を復元する。壊れたデータでも例外を投げず null を返す。
+ * t は LP_TEMPLATES に実在するテンプレIDであること、a は LpAnswers の全フィールドを
+ * 正しい型・配列長で満たしていることまで検証する（isValidLpAnswers）。共有URLは
+ * 第三者が任意のJSONを組み立てて配布できるため、型アサーションだけでは
+ * プレビュー描画（LpPreview/SwapBoundary）が想定外の形に対して例外を投げクラッシュしうる。
+ */
 export function decodeShare(hash: string): ShareState | null {
   try {
     const bytes = base64UrlToBytes(hash);
     const json = new TextDecoder().decode(bytes);
     const parsed: unknown = JSON.parse(json);
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      typeof (parsed as { t?: unknown }).t !== "string" ||
-      typeof (parsed as { a?: unknown }).a !== "object" ||
-      (parsed as { a?: unknown }).a === null
-    ) {
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const t = (parsed as { t?: unknown }).t;
+    const a = (parsed as { a?: unknown }).a;
+    if (typeof t !== "string" || !LP_TEMPLATES.some((tpl) => tpl.id === t)) {
       return null;
     }
-    return parsed as ShareState;
+    if (!isValidLpAnswers(a)) return null;
+    return { t, a };
   } catch {
     return null;
   }
@@ -76,8 +142,8 @@ export function listProjects(): SavedProject[] {
   }
 }
 
-/** プロジェクトを保存する（同名があれば上書き、なければ新規追加）。 */
-export function saveProject(name: string, state: ShareState): void {
+/** プロジェクトを保存する（同名があれば上書き、なければ新規追加）。成否を返す。 */
+export function saveProject(name: string, state: ShareState): boolean {
   try {
     const list = listProjects();
     const existing = list.find((p) => p.name === name);
@@ -93,8 +159,9 @@ export function saveProject(name: string, state: ShareState): void {
       });
     }
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(list));
+    return true;
   } catch {
-    /* noop */
+    return false;
   }
 }
 

@@ -1,8 +1,19 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { escapeHtml, swapHtml } from "./swap";
 import { encodeShare, decodeShare, type ShareState } from "./share";
 import { FREE_MONTHLY_EXPORT_LIMIT, getMonthExports, incMonthExports } from "./lpPlan";
 import type { LpAnswers, Swap } from "./types";
+
+/** encodeShare を経由せず、任意の（型を満たさない）値をそのまま #c= 用に符号化する。 */
+function encodeRaw(obj: unknown): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
 
 const baseAnswers: LpAnswers = {
   shopName: "月見亭",
@@ -119,6 +130,30 @@ describe("encodeShare / decodeShare", () => {
       .replace(/=+$/, "");
     expect(decodeShare(bogus)).toBeNull();
   });
+
+  it("features が欠落していると null を返す（深い形状検証）", () => {
+    const a: Record<string, unknown> = { ...baseAnswers };
+    delete a.features;
+    const bogus = encodeRaw({ t: "ryokan", a });
+    expect(decodeShare(bogus)).toBeNull();
+  });
+
+  it("plans の長さが2（3ではない）だと null を返す（深い形状検証）", () => {
+    const a = { ...baseAnswers, plans: baseAnswers.plans.slice(0, 2) };
+    const bogus = encodeRaw({ t: "ryokan", a });
+    expect(decodeShare(bogus)).toBeNull();
+  });
+
+  it("フィールドの型が違う（shopNameが数値）と null を返す（深い形状検証）", () => {
+    const a = { ...baseAnswers, shopName: 123 };
+    const bogus = encodeRaw({ t: "ryokan", a });
+    expect(decodeShare(bogus)).toBeNull();
+  });
+
+  it("存在しないテンプレIDだと null を返す（深い形状検証）", () => {
+    const bogus = encodeRaw({ t: "no-such-template", a: baseAnswers });
+    expect(decodeShare(bogus)).toBeNull();
+  });
 });
 
 describe("月次クォータ（lpPlan）", () => {
@@ -144,5 +179,25 @@ describe("月次クォータ（lpPlan）", () => {
     for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
     expect(getMonthExports()).toBe(FREE_MONTHLY_EXPORT_LIMIT);
     expect(getMonthExports() >= FREE_MONTHLY_EXPORT_LIMIT).toBe(true);
+  });
+
+  it("localStorage の値が負でも0にクランプされる（フェイルオープン対策）", () => {
+    const monthKey = `lp:exports:${new Date().toISOString().slice(0, 7)}`;
+    localStorage.setItem(monthKey, "-5");
+    expect(getMonthExports()).toBe(0);
+  });
+
+  it("setItem が失敗する環境でもメモリカウンタへフォールバックし、セッション内は上限が効く", () => {
+    const spy = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("QuotaExceededError（模擬）");
+      });
+    try {
+      for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
+      expect(getMonthExports() >= FREE_MONTHLY_EXPORT_LIMIT).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

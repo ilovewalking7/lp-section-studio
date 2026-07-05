@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routeFromPath } from "@/App";
-import LpBuilder from "./LpBuilder";
+import LpBuilder, { PreviewErrorBoundary } from "./LpBuilder";
 import { buildLpDocument } from "./export";
 import { encodeShare, decodeShare, type ShareState } from "./share";
 import { FREE_MONTHLY_EXPORT_LIMIT, incMonthExports } from "./lpPlan";
-import { ryokanTemplate, salonTemplate } from "./templates";
+import { clinicTemplate, ryokanTemplate, salonTemplate } from "./templates";
 import type { LpAnswers } from "./types";
 
 /**
@@ -42,7 +42,7 @@ describe("LpBuilder が例外・警告なくレンダリングできる", () => 
   it("業種選択 → 旅館カードclick → フォーム画面へ遷移", () => {
     const issues = withCapture(() => {
       const { getByRole, getByText, unmount } = render(
-        <LpBuilder plan="free" onHome={() => {}} onPricing={() => {}} />
+        <LpBuilder onHome={() => {}} onPricing={() => {}} />
       );
 
       // ① 業種選択画面
@@ -188,5 +188,102 @@ describe("クォータ枯渇時のUI挙動", () => {
     fireEvent.click(getByRole("button", { name: /書き出し・共有へ/ }));
 
     getByText(`今月の書き出し上限（${FREE_MONTHLY_EXPORT_LIMIT}回）に達しました。`);
+  });
+});
+
+describe("PreviewErrorBoundary", () => {
+  /** LpPreview に見立てた、必ず例外を投げるダミーコンポーネント。 */
+  function Boom() {
+    throw new Error("プレビュー描画の模擬エラー");
+  }
+
+  it("子要素が例外を投げるとフォールバックUIを表示し、ボタンでonResetを呼ぶ", () => {
+    const onReset = vi.fn();
+    // React はエラーバウンダリで捕捉した例外も開発モードでconsole.errorへ出力するため、
+    // このテストの意図（フォールバック表示の確認）に無関係なノイズとして抑制する。
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { getByText, getByRole } = render(
+        <PreviewErrorBoundary onReset={onReset}>
+          <Boom />
+        </PreviewErrorBoundary>
+      );
+
+      getByText(
+        "プレビューの表示に失敗しました。入力に戻ってやり直してください。"
+      );
+      fireEvent.click(getByRole("button", { name: "入力に戻る" }));
+      expect(onReset).toHaveBeenCalledTimes(1);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+});
+
+describe("書き出しHTML: 暖簾ナビの屋号は書き出し専用のrawSwapsで店名に置き換わる", () => {
+  it("「奥山亭」「OKUYAMA TEI」が残らず、店名の文字数ぶんの屋号divが入る", async () => {
+    const answers: LpAnswers = {
+      ...ryokanTemplate.defaults,
+      shopName: "潮騒の宿かもめ",
+    };
+    const html = await buildLpDocument(ryokanTemplate, answers, {
+      pro: false,
+    });
+
+    expect(html).not.toContain("奥山亭");
+    expect(html).not.toContain("OKUYAMA TEI");
+
+    for (const ch of [...answers.shopName.replace(/\s+/g, "")]) {
+      const re = new RegExp(
+        `<span class="font-mincho text-xl tracking-widest text-\\[#f5f1e8\\]">\\s*${ch}\\s*</span>`
+      );
+      expect(html, `"${ch}" の屋号divが見つからない`).toMatch(re);
+    }
+  });
+});
+
+describe("書き出しHTML: テストモニアルの架空人名は含まれない", () => {
+  it("旅館/サロン/クリニックいずれのテンプレの書き出しにもデモの架空人名が残らない", async () => {
+    const ryokanHtml = await buildLpDocument(
+      ryokanTemplate,
+      ryokanTemplate.defaults,
+      { pro: false }
+    );
+    expect(ryokanHtml).not.toContain("高瀬 美和 様");
+
+    const salonHtml = await buildLpDocument(
+      salonTemplate,
+      salonTemplate.defaults,
+      { pro: false }
+    );
+    expect(salonHtml).not.toContain("三浦 美咲");
+
+    const clinicHtml = await buildLpDocument(
+      clinicTemplate,
+      clinicTemplate.defaults,
+      { pro: false }
+    );
+    expect(clinicHtml).not.toContain("三宅 玲奈");
+  });
+});
+
+describe("書き出しHTML: クリニックテンプレのCTA（<a href=\"#\">）もリンク化される", () => {
+  it("ctaHref が <a> の href に反映され、href=\"#\" のダミーリンクが残らない", async () => {
+    const answers: LpAnswers = {
+      ...clinicTemplate.defaults,
+      ctaHref: "tel:03-1234-5678",
+    };
+    const html = await buildLpDocument(clinicTemplate, answers, {
+      pro: false,
+    });
+
+    expect(html).toContain('href="tel:03-1234-5678"');
+
+    const anchorMatches = [...html.matchAll(/<a([^>]*)>([\s\S]*?)<\/a>/g)];
+    const deadCtaRemains = anchorMatches.some(
+      ([, attrs, inner]) =>
+        attrs.includes('href="#"') && inner.includes(answers.ctaLabel)
+    );
+    expect(deadCtaRemains).toBe(false);
   });
 });

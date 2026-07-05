@@ -3,6 +3,8 @@
  * ビルダーUI（LpBuilder）のゲーティングと表示はすべてここを参照する。
  * 既存プラン（src/lib/plan.ts）とは別サービスのため独立した定義を持つ。
  */
+import { useEffect, useState } from "react";
+import type { PlanId } from "@/lib/plan";
 
 export interface LpPlanTier {
   id: "free" | "pro" | "studio";
@@ -52,21 +54,31 @@ export const FREE_MONTHLY_EXPORT_LIMIT = 3;
 
 const monthKey = () => `lp:exports:${new Date().toISOString().slice(0, 7)}`;
 
-/** 今月の書き出し回数（localStorage 不在・壊れた値は 0 扱い） */
+/**
+ * localStorage への書き込みが失敗する環境（プライベートブラウジング・容量超過等）向けの
+ * フォールバックカウンタ。モジュールレベルのメモリ内カウンタのため、そのセッション
+ * （ページを開いている間）だけ上限判定が効く。ページを開き直すとリセットされるため
+ * 恒久的なクォータではないが、「フェイルオープンで無制限に書き出せてしまう」よりは安全側。
+ */
+let memoryExportsFallback = 0;
+
+/** 今月の書き出し回数（localStorage 不在・壊れた値・負値は 0 扱いにクランプする） */
 export function getMonthExports(): number {
+  let stored = 0;
   try {
-    return Number(localStorage.getItem(monthKey()) ?? "0") || 0;
+    stored = Math.max(0, Number(localStorage.getItem(monthKey()) ?? "0") || 0);
   } catch {
-    return 0;
+    stored = 0;
   }
+  return Math.max(stored, memoryExportsFallback);
 }
 
-/** 今月の書き出し回数を1増やす */
+/** 今月の書き出し回数を1増やす。localStorage に書き込めない場合はメモリカウンタへ退避する。 */
 export function incMonthExports(): void {
   try {
     localStorage.setItem(monthKey(), String(getMonthExports() + 1));
   } catch {
-    /* noop */
+    memoryExportsFallback += 1;
   }
 }
 
@@ -86,3 +98,30 @@ export function getStripeLink(plan: "pro" | "studio"): string | null {
 
 /** 公開サイトのベースURL（共有URL・OGP生成に使用） */
 export const SITE_URL = envString(import.meta.env.VITE_SITE_URL) ?? "https://misete-lp.pages.dev";
+
+const LP_PLAN_KEY = "lp:plan";
+
+/**
+ * ミセテLP 専用のプラン状態（localStorage キー: "lp:plan"）。
+ * 既存 Studio の usePlan()（src/lib/plan.ts, キー "cs:plan"）と同じ実装パターン
+ * （初期値をlocalStorageから読み出し・変更のたびに保存）を踏襲するが、キーを分離した
+ * 別サービスの状態として独立に持つ（Studio 側の "cs:plan" には一切触れない）。
+ */
+export function useLpPlan(): {
+  plan: PlanId;
+  setPlan: (p: PlanId) => void;
+} {
+  const [plan, setPlanState] = useState<PlanId>(() => {
+    const v = (typeof localStorage !== "undefined" &&
+      localStorage.getItem(LP_PLAN_KEY)) as PlanId | null;
+    return v === "pro" || v === "studio" || v === "free" ? v : "free";
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(LP_PLAN_KEY, plan);
+    } catch {
+      /* noop */
+    }
+  }, [plan]);
+  return { plan, setPlan: setPlanState };
+}

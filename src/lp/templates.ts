@@ -21,6 +21,7 @@
  * （例: サロン/クリニックのナビ・フッターに連絡先が無い、証言セクションに
  * 対応するフィールドが LpAnswers に無い等）は素直にスキップしている。
  */
+import { escapeHtml } from "./swap";
 import type { IndustryTemplate, LpAnswers } from "./types";
 
 // ── 旅館（和風キット）────────────────────────────────────────────────
@@ -54,10 +55,31 @@ export const ryokanTemplate: IndustryTemplate = {
   defaults: ryokanDefaults,
   sections: [
     {
-      // 暖簾ナビ: 屋号は暖簾の一字ずつ("奥"/"山"/"亭")に分割されており
-      // 安全に置換できないため、CTAボタンのみをスワップする。
+      // 暖簾ナビ: 屋号は暖簾の一字ずつ("奥"/"山"/"亭")に分割された独立div構造のため
+      // テキストノード単位の swap では安全に置換できない。書き出し（export.ts）専用の
+      // rawSwaps でHTML断片ごと店名の文字数ぶんのdivへ差し替える。
+      // 既知の制約: rawSwaps はプレビュー（SwapBoundary はテキストノード単位でしか
+      // 置換しない）には反映されない。プレビューの縦書き屋号はデモの文言（奥/山/亭）の
+      // ままになる（docs/LP-BUILDER.md に明記）。
       demoId: "wafu-noren-nav",
-      swaps: [{ from: "ご予約", to: (a) => a.ctaLabel }],
+      swaps: [
+        { from: "ご予約", to: (a) => a.ctaLabel },
+        // 屋号ローマ字表記はテキストノードのため通常swapで置換できる（プレビューにも反映）
+        { from: "OKUYAMA TEI", to: (a) => a.shopName },
+      ],
+      rawSwaps: [
+        {
+          fromHtml:
+            '<div class="relative bg-[#1f3a5f] px-3 pb-4 pt-3 shadow-sm"><span class="font-mincho text-xl tracking-widest text-[#f5f1e8]">奥</span><span class="absolute inset-x-1 bottom-0 h-2 bg-[#162a45]"></span></div><div class="relative bg-[#1f3a5f] px-3 pb-4 pt-3 shadow-sm"><span class="font-mincho text-xl tracking-widest text-[#f5f1e8]">山</span><span class="absolute inset-x-1 bottom-0 h-2 bg-[#162a45]"></span></div><div class="relative bg-[#1f3a5f] px-3 pb-4 pt-3 shadow-sm"><span class="font-mincho text-xl tracking-widest text-[#f5f1e8]">亭</span><span class="absolute inset-x-1 bottom-0 h-2 bg-[#162a45]"></span></div>',
+          toHtml: (a) =>
+            [...a.shopName.replace(/\s+/g, "")]
+              .map(
+                (ch) =>
+                  `<div class="relative bg-[#1f3a5f] px-3 pb-4 pt-3 shadow-sm"><span class="font-mincho text-xl tracking-widest text-[#f5f1e8]">${escapeHtml(ch)}</span><span class="absolute inset-x-1 bottom-0 h-2 bg-[#162a45]"></span></div>`
+              )
+              .join(""),
+        },
+      ],
     },
     {
       demoId: "wafu-ryokan-hero",
@@ -103,10 +125,12 @@ export const ryokanTemplate: IndustryTemplate = {
       ],
     },
     {
-      // 筆文字お客様の声: LpAnswers にレビュー用フィールドが無く、安全に写像できる
-      // 文言も無い（人名・所感はいずれも店舗情報と結び付かない）ためスワップなし。
+      // 筆文字お客様の声: LpAnswers にレビュー用フィールドが無く、所感自体は安全に
+      // 写像できないためスワップ対象外。ただしデモ内の架空人名（「高瀬 美和 様」）は
+      // 実在しない人物名のまま公開されるのを避けるため、人名でない表記に置換する。
+      // 公開前には実際のお客様の声へ差し替えること（docs/LP-BUILDER.md参照）。
       demoId: "wafu-fude-testimonial",
-      swaps: [],
+      swaps: [{ from: "高瀬 美和 様", to: () => "お客様の声（サンプル）" }],
     },
     {
       demoId: "wafu-washi-footer",
@@ -210,13 +234,16 @@ export const salonTemplate: IndustryTemplate = {
       ],
     },
     {
-      // 会員バッジの「ブルーム」部分だけを中位プラン名に差し替える
+      // 会員バッジの「ブルーム」部分だけを中位プラン名に差し替える。
+      // デモ内の架空人名（「三浦 美咲」）も人名でない表記に置換する。
+      // 公開前には実際のお客様の声へ差し替えること（docs/LP-BUILDER.md参照）。
       demoId: "botanical-botanical-testimonial",
       swaps: [
         {
           from: "ブルーム会員 · 6ヶ月利用",
           to: (a) => `${a.plans[1].name}会員 · 6ヶ月利用`,
         },
+        { from: "三浦 美咲", to: () => "お客様の声（サンプル）" },
       ],
     },
     {
@@ -318,12 +345,15 @@ export const clinicTemplate: IndustryTemplate = {
       ],
     },
     {
+      // デモ内の架空人名（「三宅 玲奈」）は人名でない表記に置換する。
+      // 公開前には実際のお客様の声へ差し替えること（docs/LP-BUILDER.md参照）。
       demoId: "minimal-minimal-testimonial",
       swaps: [
         {
           from: "Design Director — Atelier",
           to: (a) => `Design Director — ${a.shopName}`,
         },
+        { from: "三宅 玲奈", to: () => "お客様の声（サンプル）" },
       ],
     },
     {

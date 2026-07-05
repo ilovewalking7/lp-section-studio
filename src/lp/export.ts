@@ -8,7 +8,7 @@ import { registry } from "@/registry";
 import { formatHtml } from "@/lib/vanilla";
 import { escapeHtml, swapHtml } from "./swap";
 import { SITE_URL } from "./lpPlan";
-import type { IndustryTemplate, LpAnswers } from "./types";
+import type { IndustryTemplate, LpAnswers, RawSwap } from "./types";
 import lpCss from "./lp.css?raw";
 
 /** renderToStaticMarkup の最小型（react-dom/server.browser を遅延ロード） */
@@ -26,16 +26,38 @@ function badgeHtml(): string {
 const ALLOWED_CTA_HREF_RE = /^(?:tel:|mailto:|https:|http:|#)/;
 
 /**
+ * スワップ適用後のセクションHTMLに対し、rawSwaps（HTML断片ごとの完全一致置換）を順に適用する。
+ * SectionSlot.rawSwaps が無いセクションはそのまま返す。全出現を置換する（split/join）。
+ * プレビュー（SwapBoundary）はテキストノード単位でしか置換できないため、rawSwaps は
+ * この書き出しパスでのみ適用される既知の制約がある（docs/LP-BUILDER.md参照）。
+ */
+export function applyRawSwaps(
+  html: string,
+  rawSwaps: RawSwap[] | undefined,
+  a: LpAnswers
+): string {
+  if (!rawSwaps || rawSwaps.length === 0) return html;
+  let out = html;
+  for (const raw of rawSwaps) {
+    out = out.split(raw.fromHtml).join(raw.toHtml(a));
+  }
+  return out;
+}
+
+/**
  * スワップ適用後のセクションHTMLに対し、CTAボタンをリンク化する後処理。
  * inner に（エスケープ済み）ctaLabel を含む `<button ...>...</button>` を
  * `<a ...href="ctaHref"...>...</a>` に変換する（属性は維持しつつ type/disabled は除去）。
+ * また、同じく inner にctaLabelを含む `<a ...href="#"...>...</a>`（クリニックテンプレの
+ * ミニマル系デモのようにCTAが元々 <button> ではなく "#" のダミーリンクの場合）の
+ * href="#" だけを ctaHref に書き換える（既に "#" 以外の実リンク先を持つ <a> は対象外）。
  * ctaHref が許可スキーム（tel:/mailto:/https:/http:/#）でない・空文字の場合は変換しない。
  */
 export function linkifyCta(html: string, ctaLabel: string, ctaHref: string): string {
   if (!ALLOWED_CTA_HREF_RE.test(ctaHref)) return html;
   const escapedLabel = escapeHtml(ctaLabel);
   const escapedHref = escapeHtml(ctaHref);
-  return html.replace(
+  const withButtons = html.replace(
     /<button([^>]*)>([\s\S]*?)<\/button>/g,
     (match, attrs: string, inner: string) => {
       if (!inner.includes(escapedLabel)) return match;
@@ -45,6 +67,15 @@ export function linkifyCta(html: string, ctaLabel: string, ctaHref: string): str
         .replace(/\s+type="[^"]*"(?=\s|$)/g, "")
         .replace(/\s+disabled(?:="[^"]*")?(?=\s|$)/g, "");
       return `<a${cleanedAttrs} href="${escapedHref}">${inner}</a>`;
+    }
+  );
+  return withButtons.replace(
+    /<a([^>]*)>([\s\S]*?)<\/a>/g,
+    (match, attrs: string, inner: string) => {
+      if (!inner.includes(escapedLabel)) return match;
+      if (!attrs.includes('href="#"')) return match;
+      const nextAttrs = attrs.replace('href="#"', `href="${escapedHref}"`);
+      return `<a${nextAttrs}>${inner}</a>`;
     }
   );
 }
@@ -105,6 +136,7 @@ ${body}
  *    退避/復元まで行うと、書き出し中に画面遷移した場合に呼び出し側の管理と競合し
  *    lang を誤って上書きするレースが生まれるため）
  * 2. 各セクションを実レンダリング（renderToStaticMarkup）→ swapHtml で文言を差し替え
+ *    → applyRawSwaps で書き出し専用の生HTML置換（rawSwaps）を適用
  *    → linkifyCta でCTAボタンをリンク化
  * 3. 連結し、title/meta/OGP(proのみ)/Google Fonts/インラインCSS/バッジ(freeのみ)付きの
  *    1枚HTMLに包む
@@ -132,7 +164,8 @@ export async function buildLpDocument(
     const Comp = await entry.load();
     const markup = server.renderToStaticMarkup(createElement(Comp));
     const swapped = swapHtml(markup, section.swaps, a);
-    rendered.push(linkifyCta(swapped, a.ctaLabel, a.ctaHref));
+    const rawApplied = applyRawSwaps(swapped, section.rawSwaps, a);
+    rendered.push(linkifyCta(rawApplied, a.ctaLabel, a.ctaHref));
   }
 
   const doc = wrapDocument(rendered.join("\n"), a, opts.pro);

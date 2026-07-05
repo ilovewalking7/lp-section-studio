@@ -28,10 +28,25 @@ export interface Swap {
   to: (a: LpAnswers) => string;
 }
 
+/**
+ * 1生HTMLスワップ = レンダ済みHTML文字列断片ごとの完全一致置換。
+ * Swap（テキストノード単位）では表現できない構造（例: 屋号を1文字ずつ独立した
+ * div要素に分割している暖簾ナビ）を、書き出し（export.ts）時のみHTML断片ごと
+ * 差し替えるための機構。
+ * 注意（既知の制約）: プレビュー（SwapBoundary）はテキストノード単位でしか置換しない
+ * ため rawSwaps は反映されない。書き出しHTMLにのみ効く（docs/LP-BUILDER.md 参照）。
+ */
+export interface RawSwap {
+  fromHtml: string;
+  toHtml: (a: LpAnswers) => string;
+}
+
 /** テンプレのセクション = 既存デモID + そのセクション内で適用するスワップ群 */
 export interface SectionSlot {
   demoId: string;
   swaps: Swap[];
+  /** 書き出し専用の生HTMLスワップ（省略時は無し） */
+  rawSwaps?: RawSwap[];
 }
 
 export interface IndustryTemplate {
