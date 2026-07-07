@@ -15,6 +15,7 @@
     "typecheck": "node scripts/build-manifest.mjs && tsc -b --noEmit",
     "registry": "node scripts/build-registry.mjs",
     "manifest": "node scripts/build-manifest.mjs",
+    "lp:css": "node scripts/build-lp-css.mjs",
     "test": "node scripts/build-manifest.mjs && vitest run"
   },
   "dependencies": {

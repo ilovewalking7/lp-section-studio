@@ -9,13 +9,16 @@ import { useLang } from "@/lib/i18n";
 // スタジオ（レジストリ全体・プレビュー・バニラ書き出し等の重い依存）は
 // 初期表示に不要なため、別チャンクに分けて遅延ロードする（Core Web Vitals 対策）。
 const Studio = lazy(() => import("@/Studio"));
+// ミセテLP（ウィザードUI）も同様に重いため遅延ロードする。
+const LpBuilder = lazy(() => import("@/lp/LpBuilder"));
 
-export type Route = "home" | "studio" | "pricing";
+export type Route = "home" | "studio" | "pricing" | "lp";
 
 export function routeFromPath(pathname: string): Route {
   const p = pathname.replace(/\/+$/, "") || "/";
   if (p === "/studio") return "studio";
   if (p === "/pricing") return "pricing";
+  if (p === "/lp") return "lp";
   return "home";
 }
 
@@ -83,6 +86,10 @@ export default function App({ ssrRoute }: { ssrRoute?: Route } = {}) {
           onPricing={() => go("pricing")}
         />
       </Suspense>
+    ) : route === "lp" ? (
+      <Suspense fallback={<RouteFallback />}>
+        <LpBuilder onHome={() => go("home")} onPricing={() => go("pricing")} />
+      </Suspense>
     ) : route === "pricing" ? (
       <Pricing
         currentPlan={plan}
@@ -102,8 +109,8 @@ export default function App({ ssrRoute }: { ssrRoute?: Route } = {}) {
   return (
     <>
       {page}
-      {/* スタジオはヘッダー内に言語切替を持つ。LP/料金は右上に固定表示。 */}
-      {route !== "studio" && (
+      {/* スタジオはヘッダー内に言語切替を持つ。ミセテLPは日本語固定のため非表示。料金は右上に固定表示。 */}
+      {route !== "studio" && route !== "lp" && (
         <LangToggle
           lang={lang}
           setLang={setLang}

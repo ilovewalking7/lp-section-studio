@@ -18,7 +18,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const DIST = resolve(ROOT, "dist");
 const SSR_DIR = resolve(ROOT, "dist-ssr");
-const ORIGIN = "https://app-035-studio.pages.dev";
+// VITE_SITE_URL が設定されていればそれを優先する（未設定時は既定値のまま・挙動据え置き）。
+const ORIGIN = process.env.VITE_SITE_URL ?? "https://app-035-studio.pages.dev";
 
 /** 各ルートのメタ（日本語をデフォルト言語として静的化）。 */
 const ROUTES = [
@@ -51,6 +52,16 @@ const ROUTES = [
     title: "スタジオ — LP Section Studio",
     description:
       "880+ のLPセクションと3Dコンポーネントを、ライブプレビューしながら検索・コピーできるスタジオ。",
+  },
+  {
+    route: "lp",
+    out: "lp/index.html",
+    ssr: null, // ミセテLP はウィザードUI: 本文は静的化せずシェルのみ（SEOはメタのみで対応）
+    robots: "index, follow",
+    url: `${ORIGIN}/lp`,
+    title: "ミセテLP — 質問に答えるだけ。プロ品質の日本語LPが3分で完成",
+    description:
+      "業種特化(旅館・サロン・クリニック)テンプレでLPを即作成、1枚HTMLで書き出し。無料で今すぐ。",
   },
 ];
 
