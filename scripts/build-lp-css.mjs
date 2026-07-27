@@ -46,6 +46,16 @@ const CONTENT = [
   "src/registry/demos/minimal/MonoPricing.tsx",
   "src/registry/demos/minimal/MinimalTestimonial.tsx",
   "src/registry/demos/minimal/MinimalFooter.tsx",
+  // 飲食店（洋風キット）
+  "src/registry/demos/yofu/RoyalHeader.tsx",
+  "src/registry/demos/yofu/EditorialHero.tsx",
+  "src/registry/demos/yofu/FineDiningMenu.tsx",
+  "src/registry/demos/yofu/ClassicPricing.tsx",
+  "src/registry/demos/yofu/SerifTestimonial.tsx",
+  "src/registry/demos/yofu/EleganceFooter.tsx",
+  // ミセテLP 独自セクション（写真ギャラリー）とその配色クラスを持つテンプレ定義
+  "src/lp/sections/*.tsx",
+  "src/lp/templates.ts",
   // 依存UIプリミティブ + utils
   "src/components/ui/*.tsx",
   "src/lib/utils.ts",

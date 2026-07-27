@@ -3,8 +3,13 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { registry } from "@/registry";
 import { escapeHtml, swapHtml } from "./swap";
 import { applyRawSwaps } from "./export";
-import { clinicTemplate, ryokanTemplate, salonTemplate } from "./templates";
-import type { IndustryTemplate } from "./types";
+import {
+  clinicTemplate,
+  restaurantTemplate,
+  ryokanTemplate,
+  salonTemplate,
+} from "./templates";
+import type { IndustryTemplate, LpAnswers, Testimonial } from "./types";
 import lpCss from "./lp.css?raw";
 
 /** renderToStaticMarkup の最小型（react-dom/server.browser を遅延ロード） */
@@ -113,12 +118,81 @@ function describeTemplate(t: IndustryTemplate) {
         }
       }
     );
+
+    // ── 構造（セクションID・写真セクション・お客様の声の件数）の契約 ──────────
+    it("section の id がテンプレ内で一意（写真セクションのidとも衝突しない）", () => {
+      const ids = [...t.sections.map((s) => s.id), t.photoSection.id];
+      expect(new Set(ids).size, `id が重複している: ${ids.join(", ")}`).toBe(
+        ids.length
+      );
+      for (const id of ids) {
+        expect(id, "id が空文字").not.toBe("");
+      }
+    });
+
+    it("photoSection.afterSectionId が実在する section id を指す", () => {
+      const ids = t.sections.map((s) => s.id);
+      expect(
+        ids,
+        `afterSectionId "${t.photoSection.afterSectionId}" に一致する section が無い`
+      ).toContain(t.photoSection.afterSectionId);
+    });
+
+    it("testimonialSlots が1以上、defaults.testimonials の件数以内", () => {
+      expect(t.testimonialSlots).toBeGreaterThanOrEqual(1);
+      expect(t.testimonialSlots).toBeLessThanOrEqual(
+        t.defaults.testimonials.length
+      );
+      // 入力欄として出す件数ぶんは、プリフィルが埋まっていること
+      for (let i = 0; i < t.testimonialSlots; i++) {
+        const v = t.defaults.testimonials[i];
+        expect(v.body, `testimonials[${i}].body が空`).not.toBe("");
+        expect(v.name, `testimonials[${i}].name が空`).not.toBe("");
+      }
+    });
+
+    /**
+     * testimonialSlots が「デモが実際に表示する件数」と一致していることの検査。
+     * testimonials の各フィールドを識別用の印に差し替えてスワップを適用し、
+     * slots 未満の印だけが出力に現れる（＝余った枠がフォームに出ない）ことを見る。
+     */
+    it("testimonialSlots の件数ぶんだけ testimonials を消費する", async () => {
+      const marked: LpAnswers = {
+        ...t.defaults,
+        testimonials: [0, 1, 2].map((i) => ({
+          headline: `HEADLINEMARK${i}`,
+          body: `BODYMARK${i}`,
+          name: `NAMEMARK${i}`,
+          meta: `METAMARK${i}`,
+        })) as [Testimonial, Testimonial, Testimonial],
+      };
+
+      let out = "";
+      for (const section of t.sections) {
+        out += swapHtml(await renderSection(section.demoId), section.swaps, marked);
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const used = out.includes(`MARK${i}`);
+        if (i < t.testimonialSlots) {
+          expect(used, `testimonials[${i}] がどのセクションでも使われていない`).toBe(
+            true
+          );
+        } else {
+          expect(
+            used,
+            `testimonialSlots=${t.testimonialSlots} なのに testimonials[${i}] が使われている`
+          ).toBe(false);
+        }
+      }
+    });
   });
 }
 
 describeTemplate(ryokanTemplate);
 describeTemplate(salonTemplate);
 describeTemplate(clinicTemplate);
+describeTemplate(restaurantTemplate);
 
 /**
  * CSSドリフト契約テスト（仕様E1）:
@@ -150,6 +224,7 @@ describe("CSSドリフト契約: lp.css に各テンプレの利用クラスが�
     "shadow-[0_8px_30px_rgba(183,65,14,0.12)]",
     "shadow-[0_12px_40px_-20px_rgba(63,74,53,0.5)]",
     "shadow-[0_20px_50px_-20px_rgba(63,74,53,0.7)]",
+    "md:shadow-[0_20px_50px_-20px_rgba(120,45,58,0.35)]",
     "text-[clamp(2.75rem,8vw,7rem)]",
   ]);
 
@@ -174,6 +249,11 @@ describe("CSSドリフト契約: lp.css に各テンプレの利用クラスが�
         }
       }
     }
+    // 写真セクション（PhotoShowcase）の配色クラスはテンプレ定義側に literal で持つ。
+    // デモのレンダ結果には現れないため、ここで明示的に足して同じ検査に載せる。
+    for (const tok of Object.values(t.photoSection.theme)) {
+      if (tok) tokens.add(tok);
+    }
     return tokens;
   }
 
@@ -181,6 +261,7 @@ describe("CSSドリフト契約: lp.css に各テンプレの利用クラスが�
     ["ryokan", ryokanTemplate],
     ["salon", salonTemplate],
     ["clinic", clinicTemplate],
+    ["restaurant", restaurantTemplate],
   ] as const)(
     "%s: 使用クラスがすべて lp.css に含まれる",
     async (_name, t) => {

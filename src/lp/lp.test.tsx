@@ -1,11 +1,16 @@
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routeFromPath } from "@/App";
 import LpBuilder, { PreviewErrorBoundary } from "./LpBuilder";
 import { buildLpDocument } from "./export";
-import { encodeShare, decodeShare, type ShareState } from "./share";
+import { encodeShare, decodeShare, loadDraft, type ShareState } from "./share";
 import { FREE_MONTHLY_EXPORT_LIMIT, incMonthExports } from "./lpPlan";
-import { clinicTemplate, ryokanTemplate, salonTemplate } from "./templates";
+import {
+  LP_TEMPLATES,
+  clinicTemplate,
+  ryokanTemplate,
+  salonTemplate,
+} from "./templates";
 import type { LpAnswers } from "./types";
 
 /**
@@ -13,6 +18,21 @@ import type { LpAnswers } from "./types";
  * ウィザードUIの実レンダリング・書き出しHTMLの中身・共有URL往復・
  * ルーティング・クォータ枯渇時のUI挙動を確認する。
  */
+
+// 写真の圧縮は canvas を使うため jsdom では動かない。取り込み後のUI（サムネイル・
+// 説明入力）を確認したいので、圧縮処理だけをスタブする（他のエクスポートは実物のまま）。
+vi.mock("./photo", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./photo")>();
+  return {
+    ...actual,
+    fileToCompressedDataUrl: vi.fn(
+      async () => "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+    ),
+  };
+});
+
+/** 自動保存のデバウンス（LpBuilder の DRAFT_DEBOUNCE_MS）より確実に長い待ち時間 */
+const DRAFT_WAIT_MS = 2000;
 
 beforeEach(() => {
   localStorage.clear();
@@ -48,7 +68,7 @@ describe("LpBuilder が例外・警告なくレンダリングできる", () => 
       // ① 業種選択画面
       getByText("業種を選んでください");
 
-      // 旅館カードをクリック（Card は role="button" で描画される）
+      // 旅館カードをクリック（業種カードは実 <button>）
       const ryokanCard = getByRole("button", { name: /旅館・民宿/ });
       fireEvent.click(ryokanCard);
 
@@ -58,6 +78,195 @@ describe("LpBuilder が例外・警告なくレンダリングできる", () => 
       unmount();
     });
     expect(issues, issues.join("\n---\n")).toEqual([]);
+  });
+});
+
+describe("ステップ1（業種選択）", () => {
+  it("価値訴求の見出しと、テンプレートの数だけ業種ボタンが出る", () => {
+    const { getByRole, getAllByRole } = render(
+      <LpBuilder onHome={() => {}} onPricing={() => {}} />
+    );
+
+    // 見出しは日本語の折り返し制御のため文節ごとに span で分けてある。
+    // 分割位置の変更でテストが壊れないよう、空白を無視して一致を見る。
+    getByRole("heading", {
+      name: /質問に答えるだけで、\s*プロ品質のLPが完成。/,
+    });
+    // 「① 業種を選ぶ → ② 質問に答える → ③ HTMLを書き出す」の説明も出ている
+    getByRole("heading", {
+      name: "① 業種を選ぶ → ② 質問に答える → ③ HTMLを書き出す",
+    });
+
+    const cards = getAllByRole("button", { name: /このテンプレートで作る/ });
+    expect(cards).toHaveLength(LP_TEMPLATES.length);
+    expect(cards.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("業種ボタンは実 <button> で、フォーカスして選択できる（キーボード操作可）", () => {
+    const { getByRole, getByText } = render(
+      <LpBuilder onHome={() => {}} onPricing={() => {}} />
+    );
+
+    const ryokan = getByRole("button", { name: /旅館・民宿/ });
+    // div+role="button" ではなくネイティブの button（= Enter/Space で発火する）
+    expect(ryokan.tagName).toBe("BUTTON");
+    expect(ryokan.getAttribute("role")).toBeNull();
+
+    // タブ移動でたどり着ける（tabindex 付きの div ではない）
+    (ryokan as HTMLButtonElement).focus();
+    expect(document.activeElement).toBe(ryokan);
+
+    // フォーカスしたまま押せば次のステップへ進む
+    fireEvent.click(document.activeElement as HTMLElement);
+    getByText("LPの内容を入力してください");
+  });
+});
+
+/** ①業種選択でテンプレを選び、②入力フォームまで進める */
+function renderFormStep() {
+  const view = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+  fireEvent.click(view.getByRole("button", { name: /旅館・民宿/ }));
+  view.getByText("LPの内容を入力してください");
+  return view;
+}
+
+describe("ステップ2（内容入力）", () => {
+  it("お客様の声の入力欄が testimonialSlots の件数だけ出る", () => {
+    const { getAllByLabelText } = renderFormStep();
+
+    // 旅館テンプレの証言デモは1件構成（templates.ts の testimonialSlots）
+    expect(getAllByLabelText("見出し")).toHaveLength(
+      ryokanTemplate.testimonialSlots
+    );
+    expect(getAllByLabelText("本文")).toHaveLength(
+      ryokanTemplate.testimonialSlots
+    );
+    expect(getAllByLabelText("お名前")).toHaveLength(
+      ryokanTemplate.testimonialSlots
+    );
+    expect(
+      getAllByLabelText("補足（地域・利用シーンなど）")
+    ).toHaveLength(ryokanTemplate.testimonialSlots);
+  });
+
+  it("セクションのON/OFFで hiddenSections が更新される", () => {
+    vi.useFakeTimers();
+    try {
+      const { getByRole } = renderFormStep();
+
+      // 任意セクション（optional: true）だけがトグルできる
+      const optional = ryokanTemplate.sections.filter((s) => s.optional);
+      expect(optional.length).toBeGreaterThan(0);
+      const target = optional[0];
+
+      const toggle = getByRole("switch", { name: target.label });
+      expect(toggle.getAttribute("aria-checked")).toBe("true");
+
+      fireEvent.click(toggle);
+      expect(toggle.getAttribute("aria-checked")).toBe("false");
+
+      // 自動保存されたドラフト経由で、実際に hiddenSections が更新されたことを確認する
+      act(() => {
+        vi.advanceTimersByTime(DRAFT_WAIT_MS);
+      });
+      expect(loadDraft()?.a.hiddenSections).toContain(target.id);
+
+      // 戻すと hiddenSections から消える
+      fireEvent.click(toggle);
+      expect(toggle.getAttribute("aria-checked")).toBe("true");
+      act(() => {
+        vi.advanceTimersByTime(DRAFT_WAIT_MS);
+      });
+      expect(loadDraft()?.a.hiddenSections).not.toContain(target.id);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("写真が0枚のときは写真セクションのトグルが無効", () => {
+    const { getByRole, getByText } = renderFormStep();
+    const photos = getByRole("switch", {
+      name: ryokanTemplate.photoSection.label,
+    });
+    expect((photos as HTMLButtonElement).disabled).toBe(true);
+    getByText("写真を追加すると表示できます");
+  });
+
+  it("写真を選ぶとサムネイルと説明（alt）入力が出る", async () => {
+    const { getByLabelText, findAllByLabelText, getByAltText } =
+      renderFormStep();
+
+    const input = getByLabelText("写真を選ぶ") as HTMLInputElement;
+    const file = new File(["dummy"], "onsen.jpg", { type: "image/jpeg" });
+    // jsdom では input.files に直接代入できないため、プロパティを差し替えて change を起こす
+    Object.defineProperty(input, "files", {
+      value: [file],
+      configurable: true,
+    });
+    fireEvent.change(input);
+
+    const altInputs = await findAllByLabelText(/写真の説明/);
+    expect(altInputs).toHaveLength(1);
+
+    // 説明が空のうちは装飾画像扱いにせず、入力を促す代替テキストを出す
+    getByAltText("説明が未入力の写真");
+
+    fireEvent.change(altInputs[0], { target: { value: "露天風呂" } });
+    getByAltText("露天風呂");
+  });
+});
+
+describe("自動保存（ドラフト）", () => {
+  it("回答を変更すると保存され、開き直すと再開の選択肢が出る", () => {
+    vi.useFakeTimers();
+    try {
+      const first = renderFormStep();
+      fireEvent.change(first.getByLabelText("店名・屋号"), {
+        target: { value: "潮騒の宿かもめ" },
+      });
+
+      // デバウンス前は保存されていない
+      expect(loadDraft()?.a.shopName).not.toBe("潮騒の宿かもめ");
+
+      act(() => {
+        vi.advanceTimersByTime(DRAFT_WAIT_MS);
+      });
+      expect(loadDraft()?.a.shopName).toBe("潮騒の宿かもめ");
+      first.getByText("自動保存しました");
+      first.unmount();
+
+      // 開き直すと、勝手に復元せず再開するかを尋ねる
+      const second = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+      second.getByText("前回の続きから再開しますか？");
+
+      fireEvent.click(second.getByRole("button", { name: "続きから再開する" }));
+      expect(
+        (second.getByLabelText("店名・屋号") as HTMLInputElement).value
+      ).toBe("潮騒の宿かもめ");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("「新規で始める」でドラフトを破棄する", () => {
+    vi.useFakeTimers();
+    try {
+      const first = renderFormStep();
+      fireEvent.change(first.getByLabelText("店名・屋号"), {
+        target: { value: "捨てる宿" },
+      });
+      act(() => {
+        vi.advanceTimersByTime(DRAFT_WAIT_MS);
+      });
+      first.unmount();
+
+      const second = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+      fireEvent.click(second.getByRole("button", { name: "新規で始める" }));
+      expect(loadDraft()).toBeNull();
+      expect(second.queryByText("前回の続きから再開しますか？")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -179,13 +388,13 @@ describe("クォータ枯渇時のUI挙動", () => {
     window.location.hash = `#c=${encoded}`;
 
     const { getByRole, getByText } = render(
-      <LpBuilder plan="free" onHome={() => {}} onPricing={() => {}} />
+      <LpBuilder onHome={() => {}} onPricing={() => {}} />
     );
 
     // ③ プレビュー画面から④ 書き出し・共有画面へ
-    // （このボタンは Suspense 配下ではなく常時レンダリングされているため、
-    //   プレビューの遅延ロード完了を待たずに押せる）
-    fireEvent.click(getByRole("button", { name: /書き出し・共有へ/ }));
+    // （スティッキーなツールバーの「書き出しへ」は Suspense 配下ではなく常時
+    //   レンダリングされているため、プレビューの遅延ロード完了を待たずに押せる）
+    fireEvent.click(getByRole("button", { name: /書き出しへ/ }));
 
     getByText(`今月の書き出し上限（${FREE_MONTHLY_EXPORT_LIMIT}回）に達しました。`);
   });
