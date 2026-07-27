@@ -101,7 +101,10 @@ export default function IndustryStep({
           ように意味の切れ目でない位置で折り返る。文節ごとに inline-block で包み、
           折り返しを文節の境界だけに制限する（日本語見出しの定石）。
         */}
-        <h1 className="mt-4 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+        <h1
+          tabIndex={-1}
+          className="mt-4 text-balance text-3xl font-bold tracking-tight sm:text-4xl"
+        >
           <span className="inline-block">質問に答えるだけで、</span>
           <span className="inline-block">プロ品質のLPが完成。</span>
         </h1>

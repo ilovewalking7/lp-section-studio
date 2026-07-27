@@ -13,11 +13,24 @@
 import { cn } from "@/lib/utils";
 import type { LpPhoto, PhotoTheme } from "../types";
 
-/** 枚数に応じた写真の縦横比。1枚=主役、2枚=横並び、3枚=縦長3連 */
-function aspectFor(count: number): string {
+/**
+ * 枚数に応じた写真の縦横比。1枚=主役、2枚=横並び、3枚=縦長3連。
+ *
+ * フォームのサムネイル（steps/PhotoUploader）もこの関数を使う。切り抜きの構図は
+ * 枚数で変わるため、サムネイルが固定比率だと「フォームで見た構図」と「LPの構図」が
+ * 食い違い、3枚目を足した瞬間に1枚目の見え方が変わる理由も分からなくなる。
+ */
+export function photoAspectClass(count: number): string {
   if (count <= 1) return "aspect-[16/10]";
   if (count === 2) return "aspect-[4/3]";
   return "aspect-[4/5]";
+}
+
+/** photoAspectClass と対になる、利用者に見せる比率の表記（例: "16:10"） */
+export function photoAspectLabel(count: number): string {
+  if (count <= 1) return "16:10";
+  if (count === 2) return "4:3";
+  return "4:5";
 }
 
 /** 枚数に応じたグリッド列数 */
@@ -78,7 +91,7 @@ export default function PhotoShowcase({
                 className={cn(
                   "overflow-hidden rounded-sm border",
                   theme.border,
-                  aspectFor(count)
+                  photoAspectClass(count)
                 )}
               >
                 {/* eslint-disable-next-line jsx-a11y/img-redundant-alt -- alt は利用者入力 */}

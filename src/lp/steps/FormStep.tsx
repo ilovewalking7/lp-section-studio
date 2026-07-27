@@ -4,6 +4,7 @@
  * 連絡先とCTA / 表示するセクション」のグループに分け、必須項目の充足率を上部に出す。
  * 未入力があっても先へは進める（ブロックしない）。
  */
+import { useMemo } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldGroup, LabeledInput, LabeledTextarea, Note } from "./fields";
@@ -15,6 +16,7 @@ import type {
   LpAnswers,
   LpPhoto,
   PricePlan,
+  SectionSlot,
   Testimonial,
 } from "../types";
 
@@ -29,6 +31,70 @@ export interface AnswerEditor {
    * 関数更新形で受ける（update("photos", …) だと開始時点の配列で上書きしてしまう）。
    */
   updatePhotos: (update: (prev: LpPhoto[]) => LpPhoto[]) => void;
+}
+
+/**
+ * 入力グループが「どのセクションに出るのか」をテンプレ定義から逆引きする。
+ *
+ * 対応表を templates.ts に持たせると、スワップを足し引きするたびに二重管理になり
+ * 実態とずれる。ここではスワップそのものを唯一の真実として扱い、
+ * 「その値を書き換えたとき出力が変わるセクション」＝そのグループが出るセクション
+ * とみなす（swaps / rawSwaps はいずれも回答の純関数のため副作用なく試せる）。
+ */
+function sectionShowing(
+  t: IndustryTemplate,
+  probe: (a: LpAnswers) => LpAnswers
+): SectionSlot | undefined {
+  const base = t.defaults;
+  const changed = probe(base);
+  return t.sections.find(
+    (s) =>
+      s.swaps.some((sw) => sw.to(base) !== sw.to(changed)) ||
+      (s.rawSwaps ?? []).some((rs) => rs.toHtml(base) !== rs.toHtml(changed))
+  );
+}
+
+/** 逆引き用の目印（実文言と衝突しない制御文字を末尾に足すだけ） */
+const PROBE_MARK = "\u0000";
+
+function probeFeatures(a: LpAnswers): LpAnswers {
+  const mark = (f: Feature): Feature => ({
+    title: f.title + PROBE_MARK,
+    desc: f.desc + PROBE_MARK,
+  });
+  return {
+    ...a,
+    features: [mark(a.features[0]), mark(a.features[1]), mark(a.features[2])],
+  };
+}
+
+function probePlans(a: LpAnswers): LpAnswers {
+  const mark = (p: PricePlan): PricePlan => ({
+    name: p.name + PROBE_MARK,
+    price: p.price + PROBE_MARK,
+    desc: p.desc + PROBE_MARK,
+  });
+  return {
+    ...a,
+    plans: [mark(a.plans[0]), mark(a.plans[1]), mark(a.plans[2])],
+  };
+}
+
+function probeTestimonials(a: LpAnswers): LpAnswers {
+  const mark = (v: Testimonial): Testimonial => ({
+    headline: v.headline + PROBE_MARK,
+    body: v.body + PROBE_MARK,
+    name: v.name + PROBE_MARK,
+    meta: v.meta + PROBE_MARK,
+  });
+  return {
+    ...a,
+    testimonials: [
+      mark(a.testimonials[0]),
+      mark(a.testimonials[1]),
+      mark(a.testimonials[2]),
+    ],
+  };
 }
 
 /** 進み具合バーの対象になる必須項目 */
@@ -62,6 +128,22 @@ export default function FormStep({
   const filled = fields.length - missing.length;
   const percent = Math.round((filled / fields.length) * 100);
 
+  // 入力グループとセクションの対応。テンプレが変わらない限り不変なので memo する。
+  const groupSections = useMemo(
+    () => ({
+      features: sectionShowing(template, probeFeatures),
+      plans: sectionShowing(template, probePlans),
+      testimonials: sectionShowing(template, probeTestimonials),
+    }),
+    [template]
+  );
+  const hidden = new Set(answers.hiddenSections);
+  /** 対応セクションが分かるグループに、セクション名と現在の表示状態を渡す */
+  const sectionProps = (slot: SectionSlot | undefined) =>
+    slot
+      ? { sectionLabel: slot.label, sectionHidden: hidden.has(slot.id) }
+      : {};
+
   // テンプレのデモが実際に表示できる件数だけ「お客様の声」の入力欄を出す
   const slots = Math.min(Math.max(template.testimonialSlots, 0), 3);
   const testimonialIndexes = Array.from(
@@ -72,7 +154,7 @@ export default function FormStep({
   return (
     <section className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 tabIndex={-1} className="text-2xl font-bold tracking-tight">
           LPの内容を入力してください
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -159,6 +241,7 @@ export default function FormStep({
         title="特徴（3つ）"
         description="選ばれる理由を3つに絞って書きます。"
         contentClassName="grid gap-4 sm:grid-cols-3"
+        {...sectionProps(groupSections.features)}
       >
         {answers.features.map((f, i) => (
           <fieldset key={i} className="space-y-3 rounded-md border p-3">
@@ -185,6 +268,7 @@ export default function FormStep({
         title="料金プラン（3つ）"
         description="価格が分かるだけで、問い合わせのハードルは大きく下がります。"
         contentClassName="grid gap-4 sm:grid-cols-3"
+        {...sectionProps(groupSections.plans)}
       >
         {answers.plans.map((p, i) => (
           <fieldset key={i} className="space-y-3 rounded-md border p-3">
@@ -214,8 +298,9 @@ export default function FormStep({
       <FieldGroup
         title="お客様の声"
         description={`このテンプレートでは${slots}件まで掲載できます。`}
+        {...sectionProps(groupSections.testimonials)}
       >
-        <Note className="text-amber-600 dark:text-amber-400">
+        <Note className="text-amber-700 dark:text-amber-400">
           サンプルの声が入っています。実際にいただいた声に差し替えてから公開してください。
         </Note>
         {testimonialIndexes.map((i) => {
@@ -260,6 +345,8 @@ export default function FormStep({
       <FieldGroup
         title="写真"
         description="お店の実物が伝わる写真を最大3枚まで載せられます。"
+        sectionLabel={template.photoSection.label}
+        sectionHidden={hidden.has(template.photoSection.id)}
       >
         <PhotoUploader
           photos={answers.photos}

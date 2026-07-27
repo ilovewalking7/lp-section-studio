@@ -12,6 +12,10 @@ import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fileToCompressedDataUrl, PhotoImportError } from "../photo";
+import {
+  photoAspectClass,
+  photoAspectLabel,
+} from "../sections/PhotoShowcase";
 import { MAX_PHOTOS, type LpPhoto } from "../types";
 
 export default function PhotoUploader({
@@ -166,57 +170,68 @@ export default function PhotoUploader({
       )}
 
       {photos.length > 0 && (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {photos.map((photo, i) => (
-            <li key={i} className="space-y-2 rounded-lg border bg-card p-3">
-              <img
-                src={photo.dataUrl}
-                alt={photo.alt || "説明が未入力の写真"}
-                className="aspect-[4/3] w-full rounded-md border object-cover"
-              />
-              {/* 圧縮中は一覧側の操作を止める。取り込み完了で並びが変わるため、
-                  途中で編集・削除・並べ替えをすると利用者の意図とずれた結果になる。 */}
-              <PhotoAltField
-                index={i}
-                value={photo.alt}
-                disabled={busy}
-                onChange={(v) => updateAlt(i, v)}
-              />
-              <div className="flex items-center gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="size-8"
-                  aria-label={`${i + 1}枚目の写真を前へ移動`}
-                  disabled={busy || i === 0}
-                  onClick={() => movePhoto(i, -1)}
-                >
-                  <ArrowUp />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="size-8"
-                  aria-label={`${i + 1}枚目の写真を後ろへ移動`}
-                  disabled={busy || i === photos.length - 1}
-                  onClick={() => movePhoto(i, 1)}
-                >
-                  <ArrowDown />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="ml-auto size-8 text-destructive hover:text-destructive"
-                  aria-label={`${i + 1}枚目の写真を削除`}
+        <>
+          {/* 切り抜き比率は枚数で変わる。サムネイルと同じ比率になることを明示して、
+              「フォームで見た構図」と「LPの構図」が食い違って見えないようにする。 */}
+          <p className="text-xs text-muted-foreground">
+            LPでは {photoAspectLabel(photos.length)}{" "}
+            で切り抜かれます（枚数によって変わります）。下のサムネイルは実際の切り抜きと同じ比率です。
+          </p>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {photos.map((photo, i) => (
+              <li key={i} className="space-y-2 rounded-lg border bg-card p-3">
+                <img
+                  src={photo.dataUrl}
+                  alt={photo.alt || "説明が未入力の写真"}
+                  className={cn(
+                    "w-full rounded-md border object-cover",
+                    photoAspectClass(photos.length)
+                  )}
+                />
+                {/* 圧縮中は一覧側の操作を止める。取り込み完了で並びが変わるため、
+                    途中で編集・削除・並べ替えをすると利用者の意図とずれた結果になる。 */}
+                <PhotoAltField
+                  index={i}
+                  value={photo.alt}
                   disabled={busy}
-                  onClick={() => removePhoto(i)}
-                >
-                  <Trash2 />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  onChange={(v) => updateAlt(i, v)}
+                />
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-8"
+                    aria-label={`${i + 1}枚目の写真を前へ移動`}
+                    disabled={busy || i === 0}
+                    onClick={() => movePhoto(i, -1)}
+                  >
+                    <ArrowUp />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-8"
+                    aria-label={`${i + 1}枚目の写真を後ろへ移動`}
+                    disabled={busy || i === photos.length - 1}
+                    onClick={() => movePhoto(i, 1)}
+                  >
+                    <ArrowDown />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="ml-auto size-8 text-destructive hover:text-destructive"
+                    aria-label={`${i + 1}枚目の写真を削除`}
+                    disabled={busy}
+                    onClick={() => removePhoto(i)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
@@ -250,7 +265,7 @@ function PhotoAltField({
         className="h-8 text-xs"
       />
       {value.trim() === "" && (
-        <p className="text-[11px] text-amber-600 dark:text-amber-400">
+        <p className="text-[11px] text-amber-700 dark:text-amber-400">
           目の見えない方や検索エンジンにも伝わるよう、説明を入力してください。
         </p>
       )}

@@ -4,7 +4,7 @@
  * 外部依存はGoogle Fontsのみ）を組み立てる。
  */
 import { createElement } from "react";
-import { registry } from "@/registry";
+import { registry, type DemoMeta } from "@/registry";
 import { formatHtml } from "@/lib/vanilla";
 import { escapeHtml, replaceAllInOnePass, swapHtml } from "./swap";
 import { SITE_URL } from "./lpPlan";
@@ -53,6 +53,34 @@ export function buildRenderPlan(
   if (anchor === -1) items.push({ kind: "photos" });
   else items.splice(anchor + 1, 0, { kind: "photos" });
   return items;
+}
+
+/**
+ * デモの配置指定（registry のメタ）。manifest に無い場合は Studio 実行時レジストリと
+ * 同じ既定（"center"）に倒す＝包む側に倒し、左寄せの小箱になるのを防ぐ。
+ */
+function alignOfDemo(demoId: string): NonNullable<DemoMeta["align"]> {
+  return registry.find((e) => e.id === demoId)?.align ?? "center";
+}
+
+/**
+ * align が "full"（全幅）でないデモを包む、中央寄せラッパーのクラス。"full" なら null。
+ *
+ * テンプレのセクションは大半が全幅デモだが、証言デモだけは `max-w-md` 等の「カード」
+ * として作られている（align: "center"）。中央寄せのラッパー無しで body 直下に並べると
+ * PC幅では左に寄った小さい箱になり、右半分が地の色でない余白の帯として残る。
+ *
+ * プレビュー（LpPreview）と書き出し（buildLpDocument）の両方がこの1関数を使い、
+ * 見え方を必ず一致させる（buildRenderPlan と同じ方針で二重実装を防ぐ）。
+ * 背景にはテンプレの地色（photoSection.theme.bg）を敷き、カードの左右が
+ * 白抜けしないようにする。上下の余白は写真セクション（PhotoShowcase）と揃える。
+ */
+export function centerWrapClass(
+  t: IndustryTemplate,
+  demoId: string
+): string | null {
+  if (alignOfDemo(demoId) === "full") return null;
+  return `flex w-full justify-center ${t.photoSection.theme.bg} px-6 py-16 sm:py-24`;
 }
 
 /** Free プランの書き出しに付ける固定バッジ（Tailwind非依存のインラインstyleで自己完結） */
@@ -262,7 +290,8 @@ ${body}
  * 2. buildRenderPlan の並び（非表示セクションを除外し、写真セクションを差し込んだもの）に
  *    従って各項目を実レンダリング（renderToStaticMarkup）
  *    - デモのセクション: swapHtml で文言を差し替え → applyRawSwaps で書き出し専用の
- *      生HTML置換（rawSwaps）を適用 → linkifyCta でCTAボタンをリンク化
+ *      生HTML置換（rawSwaps）を適用 → linkifyCta でCTAボタンをリンク化 →
+ *      全幅でないデモ（align !== "full"）は centerWrapClass のラッパーで中央寄せ
  *    - 写真セクション: PhotoShowcase を回答の写真で描画するだけ（内容は利用者入力そのもので
  *      デモの素文言を含まないため、swap/rawSwap/linkifyCta は適用しない）
  * 3. 連結し、title/meta/JSON-LD/favicon/theme-color/OGP(proのみ)/Google Fonts/
@@ -306,7 +335,10 @@ export async function buildLpDocument(
     const markup = server.renderToStaticMarkup(createElement(Comp));
     const swapped = swapHtml(markup, section.swaps, a);
     const rawApplied = applyRawSwaps(swapped, section.rawSwaps, a);
-    rendered.push(linkifyCta(rawApplied, a.ctaLabel, a.ctaHref));
+    const linked = linkifyCta(rawApplied, a.ctaLabel, a.ctaHref);
+    // 全幅でないデモ（証言カード等）は中央寄せのラッパーで包む（プレビューと同じ扱い）
+    const wrap = centerWrapClass(t, section.demoId);
+    rendered.push(wrap ? `<div class="${wrap}">${linked}</div>` : linked);
   }
 
   const doc = wrapDocument(rendered.join("\n"), t, a, opts.pro);

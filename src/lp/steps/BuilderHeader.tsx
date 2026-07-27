@@ -31,8 +31,14 @@ export default function BuilderHeader({
   draftMessage: string;
 }) {
   return (
+    /*
+     * 狭い画面（375px）では折り返さず必ず1段に収める。折り返してヘッダーが高くなると、
+     * プレビューのツールバー（sticky top-16 / z-30）がこのヘッダー（z-40）の下に潜り、
+     * 「編集に戻る」と表示幅切替が押せなくなるため。作業中の名前は sm 未満で隠す
+     * （自動保存の読み上げは sr-only で残す）。
+     */
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Button
           variant="ghost"
           size="sm"
@@ -45,16 +51,17 @@ export default function BuilderHeader({
 
         <StepIndicator step={step} onGoTo={onGoTo} />
 
-        <div className="max-w-[9rem] text-right sm:max-w-xs">
+        <div className="text-right sm:max-w-xs">
           <p
-            className="truncate text-sm font-medium text-muted-foreground"
+            className="hidden truncate text-sm font-medium text-muted-foreground sm:block"
             title={title}
           >
             {title || "ミセテLP"}
           </p>
+          {/* 自動保存の状態は狭い画面でも読み上げに届くよう、視覚的にだけ隠す */}
           <p
             aria-live="polite"
-            className="truncate text-[11px] text-muted-foreground"
+            className="sr-only truncate text-[11px] text-muted-foreground sm:not-sr-only"
           >
             {draftMessage}
           </p>

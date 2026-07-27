@@ -5,6 +5,7 @@
  * スクリーンリーダー・自動テストの双方で関連付けが曖昧になるため使わない）。
  */
 import { useId, type ReactNode } from "react";
+import { EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,24 +16,48 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-/** 見出し付きの入力グループ。長い1列のフォームを意味のまとまりに分ける。 */
+/**
+ * 見出し付きの入力グループ。長い1列のフォームを意味のまとまりに分ける。
+ *
+ * sectionLabel を渡すと「どのセクションに出る入力なのか」を明示する。入力欄の見出し
+ * （例:「特徴（3つ）」）と、LP上のセクション名（例:「お品書き」）は一致しないことが
+ * あり、セクションをOFFにすると入力が黙ってLPから消える事故につながるため、
+ * 対応関係と現在の表示状態をここで見せる。
+ */
 export function FieldGroup({
   title,
   description,
   children,
   contentClassName,
+  sectionLabel,
+  sectionHidden = false,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   /** 中身のレイアウト（省略時は縦積み） */
   contentClassName?: string;
+  /** この入力が実際に出るセクション名（例: 「お品書き」）。省略時は表示しない */
+  sectionLabel?: string;
+  /** そのセクションが現在非表示か（非表示なら控えめにして注記を出す） */
+  sectionHidden?: boolean;
 }) {
   return (
-    <Card>
+    <Card className={cn(sectionHidden && "opacity-60")}>
       <CardHeader className="space-y-1.5 pb-4">
         <CardTitle className="text-base">{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
+        {sectionLabel && (
+          <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <span>「{sectionLabel}」セクションに表示されます。</span>
+            {sectionHidden && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-medium text-amber-700 dark:text-amber-400">
+                <EyeOff className="size-3 shrink-0" aria-hidden />
+                現在このセクションは非表示です
+              </span>
+            )}
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className={contentClassName ?? "space-y-4"}>
         {children}
@@ -48,7 +73,7 @@ function CharCount({ value, guide }: { value: string; guide: number }) {
     <span
       className={cn(
         "text-xs tabular-nums",
-        over ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+        over ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"
       )}
     >
       {value.length} / 目安 {guide} 文字

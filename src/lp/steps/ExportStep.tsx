@@ -6,6 +6,7 @@
  * props は状態（ExportStatus）・保存パネル（ProjectPanel）・操作（ExportActions）の
  * 3つにまとめる（個別に20個以上渡すと呼び出し側の見通しが悪くなるため）。
  */
+import { useRef } from "react";
 import {
   ArrowLeft,
   Check,
@@ -68,7 +69,6 @@ export interface ExportActions {
   onLoadProject: (p: SavedProject) => void;
   onDeleteProject: (id: string) => void;
   onSetPlan: (p: PlanId) => void;
-  onPricing?: () => void;
   onBack: () => void;
 }
 
@@ -86,11 +86,29 @@ export default function ExportStep({
   actions: ExportActions;
 }) {
   const { pro, exportBlocked, downloading, copyingHtml, copiedShare } = status;
+  const pricingHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  /*
+   * 上限に達したときの唯一の解除導線。別サービス（Component Studio）の料金ページへ
+   * 飛ばすと、ビルダーの作業から離脱するうえ、そこで契約しても参照するプラン状態が
+   * 別キー（cs:plan / lp:plan）のため書き出しは解除されない。同じ画面の下にある
+   * 料金プランへスクロールし、ビルダーから離脱させない。
+   * 先にフォーカスを移してから（preventScroll でジャンプを抑えて）滑らかに送る。
+   */
+  const goToPricing = () => {
+    pricingHeadingRef.current?.focus({ preventScroll: true });
+    pricingHeadingRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
 
   return (
     <section className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">書き出し・共有</h1>
+        <h1 tabIndex={-1} className="text-2xl font-bold tracking-tight">
+          書き出し・共有
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           完成したLPをHTMLとして持ち帰るか、共有URLで誰にでも見せられます。
         </p>
@@ -112,7 +130,7 @@ export default function ExportStep({
       )}
       <p
         aria-live="polite"
-        className="min-h-5 text-sm font-medium text-emerald-600 dark:text-emerald-400"
+        className="min-h-5 text-sm font-medium text-emerald-700 dark:text-emerald-400"
       >
         {status.notice ?? ""}
       </p>
@@ -131,7 +149,7 @@ export default function ExportStep({
               className={cn(
                 "flex flex-wrap items-center gap-2 rounded-md border p-2.5 text-xs",
                 exportBlocked
-                  ? "border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400"
+                  ? "border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-400"
                   : "border-border bg-muted/30 text-muted-foreground"
               )}
             >
@@ -147,12 +165,12 @@ export default function ExportStep({
                   回
                 </span>
               )}
-              {exportBlocked && actions.onPricing && (
+              {exportBlocked && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="ml-auto h-7 gap-1 text-amber-600 hover:text-amber-700 dark:text-amber-400"
-                  onClick={actions.onPricing}
+                  className="ml-auto h-7 gap-1 text-amber-700 hover:text-amber-800 dark:text-amber-400"
+                  onClick={goToPricing}
                 >
                   <Sparkles className="size-3.5" aria-hidden />{" "}
                   Proにアップグレード
@@ -211,7 +229,10 @@ export default function ExportStep({
               onClick={actions.onCopyShareUrl}
             >
               {copiedShare ? (
-                <Check className="mr-1.5 size-4 text-emerald-500" aria-hidden />
+                <Check
+                  className="mr-1.5 size-4 text-emerald-700 dark:text-emerald-400"
+                  aria-hidden
+                />
               ) : (
                 <Share2 className="mr-1.5 size-4" aria-hidden />
               )}
@@ -233,7 +254,7 @@ export default function ExportStep({
             </Button>
           </div>
           {exportBlocked && (
-            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+            <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
               <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               今月の書き出し上限（{FREE_MONTHLY_EXPORT_LIMIT}
               回）に達しているため、HTMLのコピーもできません。共有URLのコピーは引き続きご利用いただけます。
@@ -304,8 +325,15 @@ export default function ExportStep({
 
       <PublishGuide />
 
+      {/* 上限到達時の「Proにアップグレード」の着地点（goToPricing） */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">料金プラン</h2>
+        <h2
+          ref={pricingHeadingRef}
+          tabIndex={-1}
+          className="text-base font-semibold"
+        >
+          料金プラン
+        </h2>
         <p className="text-xs text-muted-foreground">
           ※ 決済は未接続です。下のボタンでの切り替えは、機能の違いを試すためのデモです。
         </p>

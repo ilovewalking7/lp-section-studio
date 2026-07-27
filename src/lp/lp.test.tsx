@@ -4,6 +4,8 @@ import { routeFromPath } from "@/App";
 import LpBuilder, { PreviewErrorBoundary } from "./LpBuilder";
 import { buildLpDocument } from "./export";
 import { fileToCompressedDataUrl } from "./photo";
+import PhotoShowcase, { photoAspectClass } from "./sections/PhotoShowcase";
+import FormStep, { type AnswerEditor } from "./steps/FormStep";
 import { encodeShare, decodeShare, loadDraft, type ShareState } from "./share";
 import { FREE_MONTHLY_EXPORT_LIMIT, incMonthExports } from "./lpPlan";
 import {
@@ -35,9 +37,18 @@ vi.mock("./photo", async (importOriginal) => {
 /** 自動保存のデバウンス（LpBuilder の DRAFT_DEBOUNCE_MS）より確実に長い待ち時間 */
 const DRAFT_WAIT_MS = 2000;
 
+/**
+ * jsdom は window.scrollTo を実装しておらず、呼ぶと console.error に
+ * "Not implemented" を出す。ステップ移動でのスクロール位置リセット（LpBuilder）を
+ * 検証したいので、no-op のスパイに差し替える。
+ */
+const scrollToSpy = vi.fn();
+window.scrollTo = scrollToSpy as unknown as typeof window.scrollTo;
+
 beforeEach(() => {
   localStorage.clear();
   window.location.hash = "";
+  scrollToSpy.mockClear();
 });
 afterEach(() => cleanup());
 
@@ -63,7 +74,7 @@ describe("LpBuilder が例外・警告なくレンダリングできる", () => 
   it("業種選択 → 旅館カードclick → フォーム画面へ遷移", () => {
     const issues = withCapture(() => {
       const { getByRole, getByText, unmount } = render(
-        <LpBuilder onHome={() => {}} onPricing={() => {}} />
+        <LpBuilder onHome={() => {}} />
       );
 
       // ① 業種選択画面
@@ -85,7 +96,7 @@ describe("LpBuilder が例外・警告なくレンダリングできる", () => 
 describe("ステップ1（業種選択）", () => {
   it("価値訴求の見出しと、テンプレートの数だけ業種ボタンが出る", () => {
     const { getByRole, getAllByRole } = render(
-      <LpBuilder onHome={() => {}} onPricing={() => {}} />
+      <LpBuilder onHome={() => {}} />
     );
 
     // 見出しは日本語の折り返し制御のため文節ごとに span で分けてある。
@@ -105,7 +116,7 @@ describe("ステップ1（業種選択）", () => {
 
   it("業種ボタンは実 <button> で、フォーカスして選択できる（キーボード操作可）", () => {
     const { getByRole, getByText } = render(
-      <LpBuilder onHome={() => {}} onPricing={() => {}} />
+      <LpBuilder onHome={() => {}} />
     );
 
     const ryokan = getByRole("button", { name: /旅館・民宿/ });
@@ -125,7 +136,7 @@ describe("ステップ1（業種選択）", () => {
 
 /** ①業種選択でテンプレを選び、②入力フォームまで進める */
 function renderFormStep() {
-  const view = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+  const view = render(<LpBuilder onHome={() => {}} />);
   fireEvent.click(view.getByRole("button", { name: /旅館・民宿/ }));
   view.getByText("LPの内容を入力してください");
   return view;
@@ -354,7 +365,7 @@ describe("自動保存（ドラフト）", () => {
       first.unmount();
 
       // 開き直すと、勝手に復元せず再開するかを尋ねる
-      const second = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+      const second = render(<LpBuilder onHome={() => {}} />);
       second.getByText("前回の続きから再開しますか？");
 
       fireEvent.click(second.getByRole("button", { name: "続きから再開する" }));
@@ -378,7 +389,7 @@ describe("自動保存（ドラフト）", () => {
       });
       first.unmount();
 
-      const second = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+      const second = render(<LpBuilder onHome={() => {}} />);
       fireEvent.click(second.getByRole("button", { name: "新規で始める" }));
       expect(loadDraft()).toBeNull();
       expect(second.queryByText("前回の続きから再開しますか？")).toBeNull();
@@ -501,15 +512,20 @@ describe("共有: encodeShare/decodeShare 往復（ShareState経由・テンプ�
  * （スティッキーなツールバーの「書き出しへ」は Suspense 配下ではなく常時
  *   レンダリングされているため、プレビューの遅延ロード完了を待たずに押せる）
  */
-function renderExportStep() {
+function renderExportStep(onHome: () => void = () => {}) {
+  const view = renderPreviewStep(onHome);
+  fireEvent.click(view.getByRole("button", { name: /書き出しへ/ }));
+  return view;
+}
+
+/** 共有URL経由で③プレビューから起動する */
+function renderPreviewStep(onHome: () => void = () => {}) {
   const encoded = encodeShare({
     t: ryokanTemplate.id,
     a: ryokanTemplate.defaults,
   });
   window.location.hash = `#c=${encoded}`;
-  const view = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
-  fireEvent.click(view.getByRole("button", { name: /書き出しへ/ }));
-  return view;
+  return render(<LpBuilder onHome={onHome} />);
 }
 
 describe("クォータ枯渇時のUI挙動", () => {
@@ -592,7 +608,7 @@ describe("共有URLから開いたセッションの自動保存", () => {
         t: salonTemplate.id,
         a: salonTemplate.defaults,
       })}`;
-      const shared = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+      const shared = render(<LpBuilder onHome={() => {}} />);
       expect(shared.queryByText("前回の続きから再開しますか？")).toBeNull();
 
       // ③プレビューから②へ戻り、1文字だけ編集する
@@ -668,7 +684,7 @@ describe("業種テンプレの選び直し", () => {
   });
 
   it("既定値のまま（入力なし）なら確認を挟まずに切り替わる", () => {
-    const view = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+    const view = render(<LpBuilder onHome={() => {}} />);
 
     fireEvent.click(view.getByRole("button", { name: /サロン/ }));
 
@@ -691,7 +707,7 @@ describe("localStorage が使えない環境", () => {
     });
     try {
       const { getByText } = render(
-        <LpBuilder onHome={() => {}} onPricing={() => {}} />
+        <LpBuilder onHome={() => {}} />
       );
       // ①業種選択が普通に描画される（白画面にならない）
       getByText("業種を選んでください");
@@ -799,5 +815,200 @@ describe("書き出しHTML: クリニックテンプレのCTA（<a href=\"#\">�
         attrs.includes('href="#"') && inner.includes(answers.ctaLabel)
     );
     expect(deadCtaRemains).toBe(false);
+  });
+});
+
+describe("ステップ移動でスクロール位置と読み上げ位置が戻る", () => {
+  it("ステップが変わるとページ先頭へ戻り、その画面の見出しへフォーカスが移る", () => {
+    const view = render(<LpBuilder onHome={() => {}} />);
+    scrollToSpy.mockClear();
+
+    // ①業種選択 → ②内容入力
+    fireEvent.click(view.getByRole("button", { name: /旅館・民宿/ }));
+    expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    expect(document.activeElement).toBe(
+      view.getByRole("heading", { name: "LPの内容を入力してください" })
+    );
+
+    // ②内容入力 → ③プレビュー
+    scrollToSpy.mockClear();
+    fireEvent.click(view.getByRole("button", { name: /プレビューへ/ }));
+    expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    expect(document.activeElement).toBe(
+      view.getByRole("heading", { name: "プレビュー" })
+    );
+
+    // ③プレビュー → ④書き出し（主役のダウンロードボタンが画面外に残らない）
+    scrollToSpy.mockClear();
+    fireEvent.click(view.getByRole("button", { name: /書き出しへ/ }));
+    expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    expect(document.activeElement).toBe(
+      view.getByRole("heading", { name: "書き出し・共有" })
+    );
+  });
+});
+
+describe("上限到達時の「Proにアップグレード」", () => {
+  it("ビルダー内の料金プランへスクロールし、別サービスの料金ページへ遷移させない", () => {
+    for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
+    const onHome = vi.fn();
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, "scrollIntoView")
+      .mockImplementation(() => {});
+    try {
+      const view = renderExportStep(onHome);
+      const upgrade = view.getByRole("button", {
+        name: /Proにアップグレード/,
+      });
+
+      fireEvent.click(upgrade);
+
+      // 同じ画面の料金プランへ送られる（見出しへフォーカス + スクロール）
+      const pricingHeading = view.getByRole("heading", { name: "料金プラン" });
+      expect(document.activeElement).toBe(pricingHeading);
+      expect(scrollIntoView).toHaveBeenCalled();
+
+      // ビルダーから離脱していない（書き出し画面のまま・遷移コールバックも呼ばれない）
+      view.getByRole("heading", { name: "書き出し・共有" });
+      expect(onHome).not.toHaveBeenCalled();
+      expect(window.location.pathname).toBe("/");
+      // 外部の料金ページ（/pricing）への導線そのものが無い
+      expect(
+        view.container.querySelector('a[href="/pricing"]')
+      ).toBeNull();
+    } finally {
+      scrollIntoView.mockRestore();
+    }
+  });
+});
+
+describe("プレビューの表示幅切替", () => {
+  it("モバイル/タブレット/PCで、プレビュー枠の実際の width が切り替わる", () => {
+    const view = renderPreviewStep();
+    const frame = () =>
+      view.getByRole("region", { name: /幅のプレビュー/ }) as HTMLElement;
+
+    // 初期はPC（100%）
+    expect(frame().style.width).toBe("100%");
+
+    fireEvent.click(view.getByRole("button", { name: "モバイル" }));
+    expect(frame().style.width).toBe("375px");
+
+    fireEvent.click(view.getByRole("button", { name: "タブレット" }));
+    expect(frame().style.width).toBe("768px");
+
+    fireEvent.click(view.getByRole("button", { name: "PC" }));
+    expect(frame().style.width).toBe("100%");
+
+    // 上限（max-width）ではなく実寸で描くので、狭い画面でも3つが同じにならない
+    expect(frame().className).toContain("shrink-0");
+  });
+});
+
+describe("フォームの入力とセクションの対応", () => {
+  it("セクションをOFFにすると、対応する入力グループに非表示の注記が出る", () => {
+    const view = renderFormStep();
+    const voice = ryokanTemplate.sections.find((s) => s.id === "voice");
+    expect(voice?.optional).toBe(true);
+
+    // どのセクションに出る入力なのかが常に示されている
+    view.getByText(`「${voice!.label}」セクションに表示されます。`);
+    expect(view.queryByText("現在このセクションは非表示です")).toBeNull();
+
+    fireEvent.click(view.getByRole("switch", { name: voice!.label }));
+    view.getByText("現在このセクションは非表示です");
+
+    // 戻せば注記も消える
+    fireEvent.click(view.getByRole("switch", { name: voice!.label }));
+    expect(view.queryByText("現在このセクションは非表示です")).toBeNull();
+  });
+
+  it("消せるセクションはすべて、対応する入力グループから辿れる（全テンプレ）", () => {
+    /** 表示だけを見るテストなので、書き換え操作は受け取るだけで何もしない */
+    const noopEditor: AnswerEditor = {
+      update: () => {},
+      updateFeature: () => {},
+      updatePlan: () => {},
+      updateTestimonial: () => {},
+      updatePhotos: () => {},
+    };
+
+    for (const t of LP_TEMPLATES) {
+      const view = render(
+        <FormStep
+          template={t}
+          answers={t.defaults}
+          editor={noopEditor}
+          onBack={() => {}}
+          onNext={() => {}}
+        />
+      );
+      // 任意セクション（OFFにできる＝入力が黙って消えうる）と写真セクションのすべてに
+      // 対応する入力グループがあり、そこにセクション名が書かれている
+      const labels = [
+        ...t.sections.filter((s) => s.optional).map((s) => s.label),
+        t.photoSection.label,
+      ];
+      for (const label of labels) {
+        view.getByText(`「${label}」セクションに表示されます。`);
+      }
+      view.unmount();
+    }
+  });
+});
+
+describe("写真の切り抜き比率", () => {
+  /** 隠し <input type="file"> にファイルを流し込む（jsdom では files に代入できない） */
+  function selectPhoto(input: HTMLInputElement, name: string) {
+    Object.defineProperty(input, "files", {
+      value: [new File(["dummy"], name, { type: "image/jpeg" })],
+      configurable: true,
+    });
+    fireEvent.change(input);
+  }
+
+  it("比率決定関数はプレビュー（PhotoShowcase）とフォーム（サムネイル）で共有される", async () => {
+    // 枚数で比率が変わる（同じ関数がひとつの真実）
+    expect(photoAspectClass(1)).not.toBe(photoAspectClass(2));
+    expect(photoAspectClass(2)).not.toBe(photoAspectClass(3));
+
+    // ① LP側（PhotoShowcase）
+    const photos = [
+      { dataUrl: "data:image/jpeg;base64,AAAA", alt: "露天風呂" },
+      { dataUrl: "data:image/jpeg;base64,BBBB", alt: "客室" },
+    ];
+    const showcase = render(
+      <PhotoShowcase
+        photos={photos}
+        theme={ryokanTemplate.photoSection.theme}
+        eyebrow={ryokanTemplate.photoSection.eyebrow}
+        heading={ryokanTemplate.photoSection.heading}
+      />
+    );
+    const lpFrame = showcase.getByAltText("露天風呂").parentElement;
+    expect(lpFrame?.className).toContain(photoAspectClass(2));
+    showcase.unmount();
+
+    // ② フォーム側（サムネイル）: 同じ枚数なら同じ比率になる
+    const view = renderFormStep();
+    const input = view.getByLabelText("写真を選ぶ") as HTMLInputElement;
+
+    selectPhoto(input, "one.jpg");
+    await waitFor(() =>
+      expect(view.getAllByLabelText(/写真の説明/)).toHaveLength(1)
+    );
+    expect(view.getAllByAltText("説明が未入力の写真")[0].className).toContain(
+      photoAspectClass(1)
+    );
+
+    selectPhoto(input, "two.jpg");
+    await waitFor(() =>
+      expect(view.getAllByLabelText(/写真の説明/)).toHaveLength(2)
+    );
+    for (const img of view.getAllByAltText("説明が未入力の写真")) {
+      expect(img.className).toContain(photoAspectClass(2));
+    }
+    // 実際の切り抜き比率もフォーム上に明示する
+    view.getByText(/LPでは 4:3/);
   });
 });

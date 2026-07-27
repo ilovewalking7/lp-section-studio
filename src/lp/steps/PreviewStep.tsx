@@ -84,14 +84,20 @@ export default function PreviewStep({
   return (
     <section className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">プレビュー</h1>
+        <h1 tabIndex={-1} className="text-2xl font-bold tracking-tight">
+          プレビュー
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {template.name}
           テンプレートで、入力内容を反映した見た目を確認できます。
         </p>
       </div>
 
-      {/* スクロールしても操作できるツールバー */}
+      {/*
+        スクロールしても操作できるツールバー。top-16（64px）は BuilderHeader の実高さ
+        （py-3 + 1段ぶん ≒ 57px）より大きい必要がある。ヘッダーは狭い画面でも折り返さない
+        （BuilderHeader 参照）ため、375px でもこのツールバーがヘッダーの下に潜らない。
+      */}
       <div className="sticky top-16 z-30 -mx-1 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 px-3 py-2 shadow-sm backdrop-blur">
         <Button variant="outline" size="sm" onClick={onBack}>
           <ArrowLeft className="mr-1.5 size-4" aria-hidden /> 編集に戻る
@@ -129,16 +135,22 @@ export default function PreviewStep({
         縦書きの屋号など一部の意匠はプレビューでは元のまま表示され、書き出したHTMLでは店名に置き換わります。
       </p>
 
+      {/*
+        表示幅は max-width ではなく width で与える。max-width は「上限」でしかないため、
+        親より狭い画面ではモバイル/タブレット/PCのどれを選んでも実効幅が親の幅と等しく
+        なり、3つとも同じ描画になってしまう。width + shrink-0 なら指定幅のまま描画され、
+        画面に収まらないぶんは親（overflow-x-auto）の横スクロールで確認できる。
+      */}
       <div className="flex justify-center overflow-x-auto rounded-lg border bg-muted/30 p-4">
         <div
-          className="w-full transition-[max-width] duration-300"
-          style={{ maxWidth: VIEWPORTS[viewport].width }}
+          role="region"
+          aria-label={`${VIEWPORTS[viewport].label}幅のプレビュー`}
+          className="shrink-0 overflow-hidden rounded-md border bg-background shadow-sm transition-[width] duration-300"
+          style={{ width: VIEWPORTS[viewport].width }}
         >
-          <div className="overflow-hidden rounded-md border bg-background shadow-sm">
-            <PreviewErrorBoundary onReset={onBack}>
-              <LpPreview template={template} answers={answers} />
-            </PreviewErrorBoundary>
-          </div>
+          <PreviewErrorBoundary onReset={onBack}>
+            <LpPreview template={template} answers={answers} />
+          </PreviewErrorBoundary>
         </div>
       </div>
     </section>

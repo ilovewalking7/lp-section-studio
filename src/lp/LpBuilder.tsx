@@ -7,7 +7,7 @@
  * document.documentElement.lang をマウント中 "ja" に固定し、アンマウントで復元する
  * （LangToggle の影響を受けないため）。
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isPro } from "@/lib/plan";
 import { LP_TEMPLATES } from "./templates";
 import { buildLpDocument, downloadHtml } from "./export";
@@ -111,10 +111,9 @@ function resolveInitialState(): {
 
 interface LpBuilderProps {
   onHome: () => void;
-  onPricing?: () => void;
 }
 
-export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
+export default function LpBuilder({ onHome }: LpBuilderProps) {
   // プラン状態はミセテLP専用の useLpPlan()（src/lp/lpPlan.ts, localStorage "lp:plan"）を
   // 内部で直接使う。Studio 側の usePlan()（src/lib/plan.ts, "cs:plan"）とはキーが独立した
   // 別サービスの状態のため混線しない。
@@ -123,6 +122,7 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
 
   const [initial] = useState(resolveInitialState);
   const [step, setStep] = useState<Step>(initial.step);
+  const mainRef = useRef<HTMLElement>(null);
   const [templateId, setTemplateId] = useState<string>(initial.templateId);
   const [answers, setAnswers] = useState<LpAnswers>(initial.answers);
   // 別の業種テンプレへの切り替え待ち（入力済みのときだけ確認を挟むための保留先）
@@ -171,6 +171,27 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
       document.documentElement.lang = prevLang;
     };
   }, []);
+
+  /*
+   * ステップが変わったらページ先頭へ戻し、その画面の見出しへフォーカスを移す。
+   * プレビューは縦に数千pxあり、下端で「書き出しへ」を押すとスクロール位置が
+   * 保持されたまま書き出し画面の最下部に着地して、主役の「HTMLをダウンロード」が
+   * 画面外に隠れてしまう。App の window.scrollTo はルート変更時にしか発火せず、
+   * ステップ変更（同一ルート内）では効かないため、ここで面倒を見る。
+   * 見出しへのフォーカス移動は、キーボード・スクリーンリーダー利用者へ
+   * 「画面が切り替わった」ことを伝える役割も兼ねる（各見出しは tabIndex={-1}）。
+   * 初回マウントだけは対象外にする。利用者の操作なしにフォーカスを奪う挙動になり、
+   * かつ先頭へのスクロールはルート遷移時に App 側が済ませているため。
+   */
+  const stepChanged = useRef(false);
+  useEffect(() => {
+    if (!stepChanged.current) {
+      stepChanged.current = true;
+      return;
+    }
+    window.scrollTo(0, 0);
+    mainRef.current?.querySelector("h1")?.focus();
+  }, [step]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -382,7 +403,7 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
         draftMessage={draftStatus ? DRAFT_MESSAGES[draftStatus] : ""}
       />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <main ref={mainRef} className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         {step === 1 && (
           <IndustryStep
             draft={pendingDraft}
@@ -448,7 +469,6 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
               onLoadProject: handleLoadProject,
               onDeleteProject: handleDeleteProject,
               onSetPlan: setPlan,
-              onPricing,
               onBack: () => setStep(3),
             }}
           />

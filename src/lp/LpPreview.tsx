@@ -4,17 +4,18 @@
  * Suspense + SwapBoundary で縦に連結表示し、入力内容（answers）へその場で置換する。
  * 並び（非表示セクションの除外・写真セクションの差し込み位置）は書き出しと同じ
  * buildRenderPlan（export.ts）に従う。写真セクションはミセテLP独自の実体
- * （PhotoShowcase）なので lazy にせず直接描画する。
+ * （PhotoShowcase）なので lazy にせず直接描画する。全幅でないデモ（align !== "full"）を
+ * 中央寄せで包む判定も、書き出しと同じ centerWrapClass（export.ts）に従う。
  *
  * answers が変わるたびに key を変えて再マウントする（swap.ts 参照）。SwapBoundary は
  * 一度置換した後のテキストノードは元の from と一致しなくなるため、answers を差し替えた
  * だけでは正しく再置換できない。セクションごと丸ごと作り直すことで、デモの素文言から
  * 毎回スワップをやり直す。
  */
-import { lazy, Suspense, useMemo, type ComponentType } from "react";
+import { Fragment, lazy, Suspense, useMemo, type ComponentType } from "react";
 import { registry } from "@/registry";
 import { SwapBoundary } from "./swap";
-import { buildRenderPlan } from "./export";
+import { buildRenderPlan, centerWrapClass } from "./export";
 import PhotoShowcase from "./sections/PhotoShowcase";
 import type { IndustryTemplate, LpAnswers, SectionSlot } from "./types";
 
@@ -108,15 +109,23 @@ export default function LpPreview({
         const section = item.slot;
         const Comp = comps.get(section.id);
         if (!Comp) return null;
-        return (
-          <Suspense
-            key={`${section.id}-${remountKey}`}
-            fallback={<SectionFallback />}
-          >
+        // key は最外要素に置く（answers が変わるたびに丸ごと作り直してスワップをやり直す）
+        const key = `${section.id}-${remountKey}`;
+        const body = (
+          <Suspense fallback={<SectionFallback />}>
             <SwapBoundary swaps={section.swaps} answers={answers}>
               <Comp />
             </SwapBoundary>
           </Suspense>
+        );
+        // 全幅でないデモ（証言カード等）は書き出しと同じラッパーで中央寄せする
+        const wrap = centerWrapClass(template, section.demoId);
+        return wrap ? (
+          <div key={key} className={wrap}>
+            {body}
+          </div>
+        ) : (
+          <Fragment key={key}>{body}</Fragment>
         );
       })}
     </div>

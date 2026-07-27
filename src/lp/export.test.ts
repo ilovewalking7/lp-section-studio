@@ -3,10 +3,11 @@ import {
   applyRawSwaps,
   buildLpDocument,
   buildRenderPlan,
+  centerWrapClass,
   linkifyCta,
 } from "./export";
-import { ryokanTemplate, salonTemplate } from "./templates";
-import type { LpAnswers, LpPhoto } from "./types";
+import { LP_TEMPLATES, ryokanTemplate, salonTemplate } from "./templates";
+import type { IndustryTemplate, LpAnswers, LpPhoto } from "./types";
 
 /**
  * ミセテLP 書き出しの拡張分（写真セクション・セクション非表示・構造化データ・
@@ -382,5 +383,75 @@ describe("書き出しHTML: OGP（Proのみ）", () => {
     expect(jsonLd![1]).not.toContain("data:image");
     // 本文の <img> にだけ1回だけ載っていること
     expect(html.split(big).length - 1).toBe(1);
+  });
+});
+
+describe("書き出しHTML: 全幅でないセクションの中央寄せ", () => {
+  /**
+   * formatHtml は1タグ1行・ネストぶんインデントして整形する。開始タグと同じ深さで
+   * 閉じる </div> までが、そのラッパーの内側。
+   */
+  function innerOf(html: string, openTagMarker: string): string {
+    const lines = html.split("\n");
+    const open = lines.findIndex((l) => l.includes(openTagMarker));
+    expect(open, `ラッパー（${openTagMarker}）が見つからない`).toBeGreaterThan(-1);
+    const indent = /^ */.exec(lines[open])![0].length;
+    let close = open + 1;
+    while (
+      close < lines.length &&
+      !(
+        lines[close].trim() === "</div>" &&
+        /^ */.exec(lines[close])![0].length === indent
+      )
+    ) {
+      close++;
+    }
+    expect(close, "ラッパーの閉じタグが見つからない").toBeLessThan(lines.length);
+    return lines.slice(open + 1, close).join("\n");
+  }
+
+  /** 証言だけを見分けるための、他に出てこない目印を入れた回答 */
+  function answersWithMarkedTestimonial(t: IndustryTemplate): LpAnswers {
+    const marker = "中央寄せ確認マーカー本文";
+    return {
+      ...t.defaults,
+      photos: [],
+      testimonials: [
+        { ...t.defaults.testimonials[0], body: marker },
+        t.defaults.testimonials[1],
+        t.defaults.testimonials[2],
+      ],
+    };
+  }
+
+  it("align が \"full\" のセクションは包まない（既存の全幅レイアウトを変えない）", () => {
+    // 旅館テンプレのヒーロー・フッターはいずれも全幅デモ
+    expect(centerWrapClass(ryokanTemplate, "wafu-ryokan-hero")).toBeNull();
+    expect(centerWrapClass(ryokanTemplate, "wafu-washi-footer")).toBeNull();
+  });
+
+  it("align: \"center\" の証言セクションが中央寄せラッパーに包まれる（全4テンプレ）", async () => {
+    expect(LP_TEMPLATES.length).toBeGreaterThanOrEqual(4);
+
+    for (const t of LP_TEMPLATES) {
+      const centered = t.sections.filter(
+        (s) => centerWrapClass(t, s.demoId) !== null
+      );
+      // 包む対象は各テンプレの証言セクション1つだけ
+      expect(centered, `${t.id}: 中央寄せ対象`).toHaveLength(1);
+
+      const wrap = centerWrapClass(t, centered[0].demoId)!;
+      // 中央寄せ・テンプレの地色・上下の余白を持つ（左右に地色でない帯が残らない）
+      expect(wrap).toContain("justify-center");
+      expect(wrap).toContain(t.photoSection.theme.bg);
+
+      const answers = answersWithMarkedTestimonial(t);
+      const html = await buildLpDocument(t, answers, { pro: false });
+
+      const openTag = `<div class="${wrap}">`;
+      expect(countOf(html, openTag), `${t.id}: ラッパーの数`).toBe(1);
+      // 証言の本文がラッパーの内側にある
+      expect(innerOf(html, openTag)).toContain(answers.testimonials[0].body);
+    }
   });
 });
