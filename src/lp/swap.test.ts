@@ -1,5 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { escapeHtml, swapHtml } from "./swap";
+import { createElement } from "react";
+import { cleanup, render, screen } from "@testing-library/react";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { escapeHtml, swapHtml, SwapBoundary } from "./swap";
 import { encodeShare, decodeShare, type ShareState } from "./share";
 import { FREE_MONTHLY_EXPORT_LIMIT, getMonthExports, incMonthExports } from "./lpPlan";
 import type { LpAnswers, Swap } from "./types";
@@ -30,6 +32,28 @@ const baseAnswers: LpAnswers = {
     { name: "デラックス", price: "¥28,000〜", desc: "貸切露天風呂付き" },
     { name: "スイート", price: "¥45,000〜", desc: "離れ+個室食事処" },
   ],
+  testimonials: [
+    {
+      headline: "また季節を変えて。",
+      body: "貸切の露天風呂を何度も利用しました。静かな環境でゆっくり休めました。",
+      name: "T・K 様",
+      meta: "東京都 ・ ご夫婦で1泊",
+    },
+    {
+      headline: "静かな時間に癒されました。",
+      body: "部屋数が少ないぶん、行き届いたおもてなしでした。",
+      name: "M・S 様",
+      meta: "神奈川県 ・ ご家族でご利用",
+    },
+    {
+      headline: "記念日に選んでよかった。",
+      body: "離れの客室と個室の食事処で、周りを気にせず過ごせました。",
+      name: "Y・N 様",
+      meta: "千葉県 ・ 記念日のご滞在",
+    },
+  ],
+  photos: [],
+  hiddenSections: [],
   phone: "0460-00-0000",
   address: "神奈川県箱根町強羅1-2-3",
   hours: "15:00〜19:00（チェックイン）",
@@ -92,6 +116,200 @@ describe("swapHtml", () => {
     const html = "<h1>月白の宿</h1><p>箱根湯本にある宿</p>";
     const out = swapHtml(html, swaps, baseAnswers);
     expect(out).toBe("<h1>月見亭</h1><p>箱根・強羅にある宿</p>");
+  });
+});
+
+/**
+ * 二重置換（差し込んだ利用者入力が後続 swap の from に一致して再び置換される）の回帰テスト。
+ * 逐次 split/join 実装では実テンプレで価格やメニュー名が別項目の値へ化けていた。
+ */
+describe("swapHtml: 二重置換をしない（1パス同時置換）", () => {
+  it("先の swap が差し込んだ値は後続 swap の from に一致しても再置換されない", () => {
+    const swaps: Swap[] = [
+      { from: "A", to: () => "B" },
+      { from: "B", to: () => "C" },
+    ];
+    const out = swapHtml("A", swaps, baseAnswers);
+    expect(out).toBe("B");
+    expect(out).not.toBe("C");
+  });
+
+  it("元のHTMLにある後続 from は置換される（全出現の置換は維持）", () => {
+    const swaps: Swap[] = [
+      { from: "A", to: () => "B" },
+      { from: "B", to: () => "C" },
+    ];
+    expect(swapHtml("<p>A</p><p>B</p><p>A</p>", swaps, baseAnswers)).toBe(
+      "<p>B</p><p>C</p><p>B</p>"
+    );
+  });
+
+  it("サロン: プラン1の価格に「¥1,980」（プラン2の from と同一）を入れても化けない", () => {
+    // botanical-botanical-pricing の実スワップ構成（¥0 / ¥1,980 / ¥4,800）の最小再現
+    const answers: LpAnswers = {
+      ...baseAnswers,
+      plans: [
+        { name: "シード", price: "¥1,980", desc: "お試し" },
+        { name: "ブルーム", price: "¥5,800", desc: "定番" },
+        { name: "フォレスト", price: "¥12,000", desc: "本格" },
+      ],
+    };
+    const swaps: Swap[] = [
+      { from: "¥0", to: (a) => a.plans[0].price },
+      { from: "¥1,980", to: (a) => a.plans[1].price },
+      { from: "¥4,800", to: (a) => a.plans[2].price },
+    ];
+    const html = "<li>¥0</li><li>¥1,980</li><li>¥4,800</li>";
+    const out = swapHtml(html, swaps, answers);
+    expect(out).toBe("<li>¥1,980</li><li>¥5,800</li><li>¥12,000</li>");
+    // プラン1の入力が消えたり、プラン2の値が2回出たりしない
+    expect(out.split("¥1,980").length - 1).toBe(1);
+    expect(out.split("¥5,800").length - 1).toBe(1);
+  });
+
+  it("クリニック: 通貨記号が別要素のプランで表示が崩れない", () => {
+    // minimal-minimal-pricing の実スワップ構成（"1,800" / "4,800" と ¥ が別ノード）の最小再現
+    const answers: LpAnswers = {
+      ...baseAnswers,
+      plans: [
+        { name: "A健診", price: "¥0", desc: "基本" },
+        { name: "B健診", price: "¥4,800", desc: "追加" },
+        { name: "C健診", price: "¥12,000", desc: "全部" },
+      ],
+    };
+    const swaps: Swap[] = [
+      { from: "1,800", to: (a) => a.plans[1].price },
+      { from: "4,800", to: (a) => a.plans[2].price },
+    ];
+    const html = "<span>¥</span><span>1,800</span><span>¥</span><span>4,800</span>";
+    const out = swapHtml(html, swaps, answers);
+    expect(out).toBe(
+      "<span>¥</span><span>¥4,800</span><span>¥</span><span>¥12,000</span>"
+    );
+    expect(out).not.toContain("¥¥");
+  });
+
+  it("飲食店: 特徴1に別スワップと同じ文言を入れても特徴2に化けない", () => {
+    const answers: LpAnswers = {
+      ...baseAnswers,
+      features: [
+        { title: "鴨胸肉のロースト", desc: "自家製のソースで" },
+        { title: "本日の魚料理", desc: "季節の一皿" },
+        { title: "季節のデセール", desc: "食後に" },
+      ],
+    };
+    const swaps: Swap[] = [
+      { from: "オマール海老のビスク", to: (a) => a.features[0].title },
+      { from: "鴨胸肉のロースト", to: (a) => a.features[1].title },
+      { from: "スフレ・オ・ショコラ", to: (a) => a.features[2].title },
+    ];
+    const html =
+      "<li>オマール海老のビスク</li><li>鴨胸肉のロースト</li><li>スフレ・オ・ショコラ</li>";
+    const out = swapHtml(html, swaps, answers);
+    expect(out).toBe(
+      "<li>鴨胸肉のロースト</li><li>本日の魚料理</li><li>季節のデセール</li>"
+    );
+  });
+
+  it("同じ位置で競合したら長い from を優先する", () => {
+    const swaps: Swap[] = [
+      // 短い方を先に並べても、長い方（より具体的な文言）が勝つ
+      { from: "松", to: () => "SHORT" },
+      { from: "松コース", to: () => "LONG" },
+    ];
+    const out = swapHtml("<p>松コース</p><p>松</p>", swaps, baseAnswers);
+    expect(out).toBe("<p>LONG</p><p>SHORT</p>");
+  });
+
+  it("from が空文字のスワップは無視する（無限ループしない）", () => {
+    const swaps: Swap[] = [
+      { from: "", to: () => "X" },
+      { from: "月白の宿", to: (a) => a.shopName },
+    ];
+    const out = swapHtml("<h1>月白の宿</h1>", swaps, baseAnswers);
+    expect(out).toBe("<h1>月見亭</h1>");
+    expect(out).not.toContain("X");
+  });
+
+  it("from が空文字のスワップだけでも入力をそのまま返す", () => {
+    expect(swapHtml("<p>そのまま</p>", [{ from: "", to: () => "X" }], baseAnswers)).toBe(
+      "<p>そのまま</p>"
+    );
+  });
+});
+
+describe("SwapBoundary（プレビュー）", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  /** MutationObserver のコールバック（マイクロタスク）が走り切るまで待つ */
+  async function flushObservers(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  it("テキストノードを from → to に置換する", async () => {
+    const swaps: Swap[] = [{ from: "月白の宿", to: (a) => a.shopName }];
+    render(
+      createElement(
+        SwapBoundary,
+        { swaps, answers: baseAnswers },
+        createElement("h1", { "data-testid": "name" }, "月白の宿")
+      )
+    );
+    await flushObservers();
+    expect(screen.getByTestId("name").textContent).toBe("月見亭");
+  });
+
+  it("置換後のテキストが後続スワップの from に一致しても再置換されない", async () => {
+    const answers: LpAnswers = {
+      ...baseAnswers,
+      plans: [
+        { name: "シード", price: "¥1,980", desc: "お試し" },
+        { name: "ブルーム", price: "¥5,800", desc: "定番" },
+        { name: "フォレスト", price: "¥12,000", desc: "本格" },
+      ],
+    };
+    const swaps: Swap[] = [
+      { from: "¥0", to: (a) => a.plans[0].price },
+      { from: "¥1,980", to: (a) => a.plans[1].price },
+      { from: "¥4,800", to: (a) => a.plans[2].price },
+    ];
+    render(
+      createElement(
+        SwapBoundary,
+        { swaps, answers },
+        createElement("p", { "data-testid": "p1" }, "¥0"),
+        createElement("p", { "data-testid": "p2" }, "¥1,980"),
+        createElement("p", { "data-testid": "p3" }, "¥4,800")
+      )
+    );
+    await flushObservers();
+    expect(screen.getByTestId("p1").textContent).toBe("¥1,980");
+    expect(screen.getByTestId("p2").textContent).toBe("¥5,800");
+    expect(screen.getByTestId("p3").textContent).toBe("¥12,000");
+  });
+
+  it("後からDOMに追加されたノードも置換する（遅延マウント対応は維持）", async () => {
+    const swaps: Swap[] = [{ from: "月白の宿", to: (a) => a.shopName }];
+    const { container } = render(
+      createElement(
+        SwapBoundary,
+        { swaps, answers: baseAnswers },
+        createElement("div", { "data-testid": "host" })
+      )
+    );
+    await flushObservers();
+
+    const host = container.querySelector('[data-testid="host"]');
+    expect(host).not.toBeNull();
+    const added = document.createElement("span");
+    added.textContent = "月白の宿";
+    host!.appendChild(added);
+    await flushObservers();
+
+    expect(added.textContent).toBe("月見亭");
   });
 });
 

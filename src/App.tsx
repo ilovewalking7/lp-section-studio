@@ -88,7 +88,8 @@ export default function App({ ssrRoute }: { ssrRoute?: Route } = {}) {
       </Suspense>
     ) : route === "lp" ? (
       <Suspense fallback={<RouteFallback />}>
-        <LpBuilder onHome={() => go("home")} onPricing={() => go("pricing")} />
+        {/* ミセテLPは自前の料金プラン（lp:plan）を持つため、Studio の /pricing へは繋がない */}
+        <LpBuilder onHome={() => go("home")} />
       </Suspense>
     ) : route === "pricing" ? (
       <Pricing
