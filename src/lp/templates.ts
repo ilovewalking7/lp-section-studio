@@ -37,6 +37,20 @@ function quoted(body: string): string {
   return body.startsWith("「") && body.endsWith("」") ? body : `「${body}」`;
 }
 
+/**
+ * 料金の先頭にある通貨記号を落とす。デモ側が通貨記号を別要素（例 MonoPricing の
+ * `<span>¥</span>`）で持つ料金表に利用者入力の「¥18,000」をそのまま差し込むと
+ * 「¥ ¥18,000」と二重表示になるため、そのデモ専用に先頭記号を取り除く。
+ */
+function withoutCurrencyMark(price: string): string {
+  return price.replace(/^[¥￥]\s*/, "");
+}
+
+/** 空の項目を除いて区切り文字で連結する（回答が未入力でも区切りだけが残らないように） */
+function joinFilled(parts: string[], sep: string): string {
+  return parts.filter((v) => v !== "").join(sep);
+}
+
 // ── 旅館（和風キット）────────────────────────────────────────────────
 // swap.test.ts の baseAnswers と同じ値を採用し、テスト間の期待値を揃える。
 const ryokanDefaults: LpAnswers = {
@@ -145,6 +159,9 @@ export const ryokanTemplate: IndustryTemplate = {
       label: "ヒーロー",
       demoId: "wafu-ryokan-hero",
       swaps: [
+        // 「創業 明治四十二年」はフォームに創業年の入力欄が無く、デモ由来の架空の
+        // 事実表示になるため、実際に入力された営業時間の帯に置き換える。
+        { from: "創業 明治四十二年", to: (a) => a.hours },
         { from: "月白の宿", to: (a) => a.shopName },
         { from: "　奥山温泉", to: (a) => `　${a.area}` },
         { from: "山あいに佇む、十二室だけの静かな宿。", to: (a) => a.tagline },
@@ -160,18 +177,21 @@ export const ryokanTemplate: IndustryTemplate = {
       ],
     },
     {
-      // 会席品書き: 全七品のうち三品を features[0..2] に割り当てる
+      // 会席品書き: デモは七品だが、回答で埋まるのは features の三品だけなので
+      // 先頭三品（先付・椀物・向付）に割り当て、残り四品は rawSwaps で行ごと取り除く。
+      // 「水無月の献立 ・ 全七品」は実態と合わない件数・季節表記のため空にする。
       id: "menu",
       label: "お品書き",
       optional: true,
       demoId: "wafu-kaiseki-menu",
       swaps: [
-        { from: "本日の鮮魚 三種盛り", to: (a) => a.features[0].title },
-        { from: "近海の旬を吟味して", to: (a) => a.features[0].desc },
-        { from: "信州牛の陶板焼き", to: (a) => a.features[1].title },
-        { from: "山葵醤油でさっぱりと", to: (a) => a.features[1].desc },
-        { from: "土鍋炊き 新米ごはん", to: (a) => a.features[2].title },
-        { from: "香の物・赤出汁とともに", to: (a) => a.features[2].desc },
+        { from: "水無月の献立 ・ 全七品", to: () => "" },
+        { from: "胡麻豆腐 山葵添え", to: (a) => a.features[0].title },
+        { from: "なめらかな口当たりを冷やして", to: (a) => a.features[0].desc },
+        { from: "蛤と若布の清汁仕立て", to: (a) => a.features[1].title },
+        { from: "出汁の香りを一椀に", to: (a) => a.features[1].desc },
+        { from: "本日の鮮魚 三種盛り", to: (a) => a.features[2].title },
+        { from: "近海の旬を吟味して", to: (a) => a.features[2].desc },
       ],
     },
     {
@@ -183,6 +203,10 @@ export const ryokanTemplate: IndustryTemplate = {
       optional: true,
       demoId: "wafu-matsu-take-ume-pricing",
       swaps: [
+        // 「／名・税込」は税の扱いを断定してしまう表記（回答に対応項目が無い）ため落とす
+        { from: "／名・税込", to: () => "" },
+        // 3枚とも同じ予約導線に揃えたいので意図的に全置換させる（linkifyCta がリンク化する）
+        { from: "このプランで予約", to: (a) => a.ctaLabel },
         { from: "気軽に湯と食を愉しむ", to: (a) => a.plans[0].desc },
         { from: "￥18,000", to: (a) => a.plans[0].price },
         { from: "もっとも選ばれる定番", to: (a) => a.plans[1].desc },
@@ -219,8 +243,13 @@ export const ryokanTemplate: IndustryTemplate = {
       swaps: [
         { from: "奥山亭", to: (a) => a.shopName },
         { from: "山あいに佇む、十二室の宿。", to: (a) => a.tagline },
+        // 郵便番号の入力欄が無く「〒399-XXXX」がそのまま残るため空にする
+        // （残る先頭の <br/> は rawSwaps で畳む）
+        { from: "〒399-XXXX", to: () => "" },
         { from: "長野県奥山郡奥山町温泉 1-2-3", to: (a) => a.address },
         { from: "TEL 0265-XX-XXXX", to: (a) => `TEL ${a.phone}` },
+        // 六月に固定された時候の挨拶（実態と合わない）を落とす
+        { from: "― 水無月の候、青葉の風にのせて ―", to: () => "" },
       ],
     },
   ],
@@ -315,6 +344,13 @@ export const salonTemplate: IndustryTemplate = {
       label: "ヒーロー",
       demoId: "botanical-botanical-hero",
       swaps: [
+        // デモ由来の英字バッジ・認証表示（ヴィーガン認証等）は店主が入力していない
+        // 主張になるため、回答済みの所在地・営業時間・住所に置き換える。
+        { from: "NATURE-DERIVED CARE", to: (a) => a.area },
+        {
+          from: "ヴィーガン認証 · 動物実験フリー · 100% リサイクル容器",
+          to: (a) => joinFilled([a.hours, a.address], " ・ "),
+        },
         { from: "肌と心に、", to: (a) => a.tagline },
         // <br/> で分割された2行目は空文字にして単行のキャッチコピーへ畳む
         { from: "植物のやさしさを。", to: () => "" },
@@ -333,6 +369,9 @@ export const salonTemplate: IndustryTemplate = {
       optional: true,
       demoId: "botanical-botanical-feature",
       swaps: [
+        // 見出しはスキンケアブランド向けのデモ文言なので、業種として中立な文言にする
+        { from: "植物の知恵を、毎日のケアに", to: () => "サロンの特徴" },
+        { from: "自然と科学の調和から生まれる、わたしたちのこだわり。", to: () => "" },
         { from: "畑から処方へ", to: (a) => a.features[0].title },
         {
           from: "契約農家で育てた植物を、収穫から72時間以内に抽出。鮮度の高い有効成分を届けます。",
@@ -359,8 +398,23 @@ export const salonTemplate: IndustryTemplate = {
       optional: true,
       demoId: "botanical-botanical-pricing",
       swaps: [
+        // 月額サブスクのデモなので、施術単価に合わない「/ 月」と解約条件の断定を落とす。
+        // 「/ 月」の除去は価格の差し込みより先に行う（利用者が「¥6,800 / 月」と
+        // 入力していた場合に、その一部まで消えてしまうのを防ぐ）。
+        { from: "/ 月", to: () => "" },
+        { from: "MEMBERSHIP", to: () => "ご料金" },
+        { from: "あなたのペースで育つプラン", to: () => "メニュー・料金" },
+        { from: "いつでも変更・解約可能。植物のように、無理なく続くウェルネスを。", to: () => "" },
+        // 特典リスト（デモ由来の架空の特典）は rawSwaps で行ごと取り除く。
+        // 「シード/ブルームの全特典」だけは名称スワップより先に空にしておく
+        // （先に空にしないと、後続の名称置換で rawSwaps の fromHtml が
+        //   利用者入力に依存してしまい一致しなくなる）。
+        { from: "シードの全特典", to: () => "" },
+        { from: "ブルームの全特典", to: () => "" },
+        { from: "シード", to: (a) => a.plans[0].name },
         { from: "はじめての方に。基本のケアを無料で。", to: (a) => a.plans[0].desc },
         { from: "¥0", to: (a) => a.plans[0].price },
+        { from: "ブルーム", to: (a) => a.plans[1].name },
         { from: "毎日のウェルネスを習慣に。", to: (a) => a.plans[1].desc },
         { from: "¥1,980", to: (a) => a.plans[1].price },
         { from: "フォレスト", to: (a) => a.plans[2].name },
@@ -391,6 +445,11 @@ export const salonTemplate: IndustryTemplate = {
       label: "フッター",
       demoId: "botanical-botanical-footer",
       swaps: [
+        // コピーライト行の「Verdé Botanicals.」の屋号以外の部分を落とす。
+        // 年号は new Date().getFullYear() で毎年変わるため from に含めない。
+        // 既知の制約: この行は「© 2026 Verdé Botanicals. All rights reserved.」という
+        // 1テキストノードの一部のため、テキストノード単位のプレビューには反映されない。
+        { from: " Botanicals.", to: () => "" },
         { from: "Verdé", to: (a) => a.shopName },
         {
           from: "植物の力で、肌と心を整える。自然と共にあるウェルネスを、あなたの毎日へ。",
@@ -488,6 +547,14 @@ export const clinicTemplate: IndustryTemplate = {
       label: "ヒーロー",
       demoId: "minimal-swiss-hero",
       swaps: [
+        // デザインスタジオのデモ由来の識別子（Studio / 2026、01 — 12、Index、Color、
+        // タイポグラフィ論の一文）は業種と無関係なので、回答済みの情報に置き換える。
+        { from: "Studio / 2026", to: (a) => a.area },
+        { from: "01 — 12", to: (a) => a.hours },
+        { from: "Index", to: () => "ごあいさつ" },
+        { from: "Color", to: () => "アクセス" },
+        { from: "モノクロームを基調に、ただ一点のみアクセントを許す。", to: (a) => a.address },
+        { from: "International Typographic Style", to: () => "" },
         { from: "余白こそ", to: (a) => a.tagline },
         // <br/> で分割された2行目は空文字にして単行のキャッチコピーへ畳む
         { from: "最上の装飾。", to: () => "" },
@@ -505,6 +572,9 @@ export const clinicTemplate: IndustryTemplate = {
       optional: true,
       demoId: "minimal-feature-grid-swiss",
       swaps: [
+        // 見出しはタイポグラフィ論のデモ文言なので、業種として中立な文言にする
+        { from: "設計の原理", to: () => "診療の特徴" },
+        { from: "Six principles of the International Typographic Style.", to: () => "" },
         { from: "グリッド設計", to: (a) => a.features[0].title },
         {
           from: "8pt基準のモジュラーグリッドで、すべての要素を整然と配置する。",
@@ -528,15 +598,22 @@ export const clinicTemplate: IndustryTemplate = {
       optional: true,
       demoId: "minimal-mono-pricing",
       swaps: [
+        // 月額サブスクのデモなので、健診料金に合わない「Monthly / JPY」を落とす
+        { from: "Monthly / JPY", to: () => "" },
+        // ダミーリンク（href="#"）のボタンだが、CTA文言にすると linkifyCta が
+        // ctaHref へのリンクに書き換えるため、3枚とも予約導線として生かす
+        { from: "選択する", to: (a) => a.ctaLabel },
         { from: "Solo", to: (a) => a.plans[0].name },
         { from: "個人の習作向け", to: (a) => a.plans[0].desc },
-        // Solo の価格「0」は単独の数字で他のクラス名等の数字と衝突しうるため対象外
+        // 価格はデモ側が通貨記号を別要素（<span>¥</span>）で持つため、
+        // 利用者入力の先頭記号を落として「¥ ¥18,000」の二重表示を防ぐ。
+        // Solo の価格「0」は単独の数字でクラス名の数字とも衝突するので rawSwaps で置換する。
         { from: "Studio", to: (a) => a.plans[1].name },
         { from: "プロのチーム向け", to: (a) => a.plans[1].desc },
-        { from: "1,800", to: (a) => a.plans[1].price },
+        { from: "1,800", to: (a) => withoutCurrencyMark(a.plans[1].price) },
         { from: "Atelier", to: (a) => a.plans[2].name },
         { from: "組織・代理店向け", to: (a) => a.plans[2].desc },
-        { from: "4,800", to: (a) => a.plans[2].price },
+        { from: "4,800", to: (a) => withoutCurrencyMark(a.plans[2].price) },
       ],
     },
     {
@@ -565,6 +642,12 @@ export const clinicTemplate: IndustryTemplate = {
       label: "フッター",
       demoId: "minimal-minimal-footer",
       swaps: [
+        // コピーライト行「© 2026 Atelier Studio」の接尾辞と、デモの様式名を落とす。
+        // 年号は毎年変わるため from に含めず、接尾辞（前方の半角スペース込み）だけを消す。
+        // 屋号の置換より先に処理する（屋号自体が " Studio" を含む場合の巻き添えを防ぐ）。
+        // 既知の制約: コピーライト行は1テキストノードの一部のためプレビューには反映されない。
+        { from: " Studio", to: () => "" },
+        { from: "International Typographic Style", to: () => "" },
         { from: "Atelier", to: (a) => a.shopName },
         {
           from: "規律あるグリッドと精密なタイポグラフィのためのコンポーネントスタジオ。",
@@ -679,6 +762,12 @@ export const restaurantTemplate: IndustryTemplate = {
       swaps: [
         { from: "La Maison", to: (a) => a.shopName },
         { from: "The Spring Editorial", to: (a) => a.area },
+        // 雑誌デモ由来の号数・写真クレジット・フランス語のコピーは店の実態ではないため、
+        // 号数とクレジットは落とし、装飾枠は屋号＋所在地の飾り板として使う。
+        { from: "Vol. XII", to: () => "" },
+        { from: "Photograph No. 04", to: () => "" },
+        { from: "“Élégance", to: (a) => a.shopName },
+        { from: "intemporelle”", to: (a) => a.area },
         // 見出しは「The Art of」+ イタリックの「Quiet」+ <br/> +「Luxury & Form」の
         // 3テキストノード構成。1つ目にキャッチコピーを入れ、残り2つは空文字にして
         // 単行へ畳む（"The Art of" の後続の半角スペースは別ノードなので from に含めない。
@@ -707,6 +796,16 @@ export const restaurantTemplate: IndustryTemplate = {
       optional: true,
       demoId: "yofu-fine-dining-menu",
       swaps: [
+        // 各品の説明に前置きされるフランス語名（「Bisque de Homard — 」等）は
+        // 利用者の料理と無関係になるため、名前と区切りの「 — 」を落とす。
+        { from: "Bisque de Homard", to: () => "" },
+        { from: "Terrine de Foie Gras", to: () => "" },
+        { from: "Magret de Canard", to: () => "" },
+        { from: "Sole Meunière", to: () => "" },
+        { from: "Soufflé au Chocolat", to: () => "" },
+        { from: " — ", to: () => "" },
+        // サービス料・税の扱いを断定する脚注（回答に対応項目が無い）を落とす
+        { from: "Service compris · 税・サービス料込", to: () => "" },
         { from: "オマール海老のビスク", to: (a) => a.features[0].title },
         { from: "コニャックの香り、生クリームと共に", to: (a) => a.features[0].desc },
         { from: "鴨胸肉のロースト", to: (a) => a.features[1].title },
@@ -728,6 +827,10 @@ export const restaurantTemplate: IndustryTemplate = {
         // 「 / 月」の除去は価格の差し込みより先に行う。逆順だと利用者が
         // 「¥3,000 / 月」のような価格を入れた場合に、その一部まで消えてしまう。
         { from: " / 月", to: () => "" },
+        // 会員制サブスクのデモ文言をコース料金の見出しに直す
+        { from: "Adhésion", to: () => "" },
+        { from: "会員プラン", to: () => "コース・料金" },
+        { from: "Recommandé", to: () => "おすすめ" },
         { from: "Essentiel", to: (a) => a.plans[0].name },
         { from: "はじめての方へ", to: (a) => a.plans[0].desc },
         { from: "¥3,800", to: (a) => a.plans[0].price },
@@ -774,7 +877,13 @@ export const restaurantTemplate: IndustryTemplate = {
       id: "footer",
       label: "フッター",
       demoId: "yofu-elegance-footer",
-      swaps: [{ from: "Beauregard", to: (a) => a.shopName }],
+      swaps: [
+        // コピーライト行の接頭辞「Maison 」を屋号の置換より先に落とす。
+        // 1列目の列見出しは「Maison」（直後が終了タグ）なので半角スペース込みの
+        // from とは一致せず、見出しは壊れない。
+        { from: "Maison ", to: () => "" },
+        { from: "Beauregard", to: (a) => a.shopName },
+      ],
     },
   ],
 };
