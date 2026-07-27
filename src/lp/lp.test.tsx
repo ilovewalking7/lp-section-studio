@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routeFromPath } from "@/App";
 import LpBuilder, { PreviewErrorBoundary } from "./LpBuilder";
-import { buildLpDocument } from "./export";
+import { buildLpDocument, centerWrapClass } from "./export";
 import { fileToCompressedDataUrl } from "./photo";
 import PhotoShowcase, { photoAspectClass } from "./sections/PhotoShowcase";
 import FormStep, { type AnswerEditor } from "./steps/FormStep";
@@ -902,6 +902,20 @@ describe("プレビューの表示幅切替", () => {
 
     // 上限（max-width）ではなく実寸で描くので、狭い画面でも3つが同じにならない
     expect(frame().className).toContain("shrink-0");
+  });
+
+  it("全幅でないセクションは、書き出しと同じ中央寄せラッパーで包まれる", async () => {
+    const view = renderPreviewStep();
+    const voice = ryokanTemplate.sections.find((s) => s.id === "voice")!;
+    const wrap = centerWrapClass(ryokanTemplate, voice.demoId);
+    expect(wrap).not.toBeNull();
+
+    // 遅延ロードしたセクションが、書き出しと同一のクラスのラッパー配下に出る
+    await waitFor(() =>
+      expect(
+        view.container.querySelector(`div[class="${wrap}"]`)
+      ).not.toBeNull()
+    );
   });
 });
 
