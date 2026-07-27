@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildLpDocument, buildRenderPlan } from "./export";
-import { ryokanTemplate } from "./templates";
+import {
+  applyRawSwaps,
+  buildLpDocument,
+  buildRenderPlan,
+  linkifyCta,
+} from "./export";
+import { ryokanTemplate, salonTemplate } from "./templates";
 import type { LpAnswers, LpPhoto } from "./types";
 
 /**
@@ -17,6 +22,11 @@ function photo(alt: string, filler = "AAAA"): LpPhoto {
 /** ryokanTemplate の既定回答に上書きを重ねた回答を作る */
 function answersWith(patch: Partial<LpAnswers>): LpAnswers {
   return { ...ryokanTemplate.defaults, ...patch };
+}
+
+/** html の中に needle が現れる回数 */
+function countOf(html: string, needle: string): number {
+  return html.split(needle).length - 1;
 }
 
 /** 書き出しHTMLから JSON-LD のスクリプト中身を取り出す */
@@ -88,6 +98,132 @@ describe("buildRenderPlan", () => {
     expect(ids).not.toContain("voice");
     expect(ids).not.toContain("pricing");
     expect(ids).toContain("hero");
+  });
+});
+
+describe("linkifyCta", () => {
+  /** ナビの内部リンクとCTAボタンが同居する、レンダ結果に近い断片 */
+  const html =
+    '<nav><a href="#" class="nav">ホーム</a><a href="#" class="nav">アクセス</a></nav>' +
+    '<button type="button" class="cta">ご予約はこちら</button>' +
+    '<button type="button" class="ghost">閉じる</button>';
+  const href = "tel:03-0000-0000";
+
+  it("ctaLabel を含む <button> を <a href> に変換する（type/disabled は除去）", () => {
+    const out = linkifyCta(
+      '<button type="button" disabled class="cta">ご予約はこちら</button>',
+      "ご予約はこちら",
+      href
+    );
+    expect(out).toBe('<a class="cta" href="tel:03-0000-0000">ご予約はこちら</a>');
+  });
+
+  it('ctaLabel を含む <a href="#"> の href だけを書き換える', () => {
+    const out = linkifyCta(html, "ご予約はこちら", href);
+    // CTAボタンはリンク化される
+    expect(out).toContain('<a class="cta" href="tel:03-0000-0000">ご予約はこちら</a>');
+    // CTA文言を含まないナビ・その他ボタンは素のまま
+    expect(out).toContain('<a href="#" class="nav">ホーム</a>');
+    expect(out).toContain('<button type="button" class="ghost">閉じる</button>');
+  });
+
+  it("ctaHref が許可スキーム外なら何も変換しない", () => {
+    expect(linkifyCta(html, "ご予約はこちら", "javascript:alert(1)")).toBe(html);
+  });
+
+  /**
+   * 回帰（欠陥2）: escapeHtml("") === "" のため inner.includes("") が常に true になり、
+   * CTA文言が空だとページ内の全 <button> と全 <a href="#"> が電話リンクに化けていた。
+   * FormStep はCTA文言の未入力を許すため、実際に到達する。
+   */
+  it("ctaLabel が空文字なら1つも変換しない", () => {
+    expect(linkifyCta(html, "", href)).toBe(html);
+  });
+
+  // 空白のみの文言は escapeHtml しても空白のまま残るため、要素の中身に空白を含む
+  // ボタン・リンク（アイコンとラベルを並べた実デモの形）が同じように巻き込まれる。
+  const spacedHtml =
+    '<nav><a href="#" class="nav">ホーム   へ</a></nav>' +
+    '<button type="button" class="ghost"><span>閉じる</span>   <svg></svg></button>';
+
+  it.each([" ", "   "])(
+    "ctaLabel が空白のみ（%o）でも1つも変換しない",
+    (label) => {
+      const out = linkifyCta(spacedHtml, label, href);
+      expect(out).toBe(spacedHtml);
+      expect(out).not.toContain(href);
+      expect(countOf(out, "<button")).toBe(1);
+      expect(countOf(out, 'href="#"')).toBe(1);
+    }
+  );
+});
+
+describe("applyRawSwaps", () => {
+  const answers = answersWith({});
+
+  it("fromHtml の全出現を toHtml に置換する", () => {
+    const out = applyRawSwaps(
+      "<div>X</div><div>X</div>",
+      [{ fromHtml: "<div>X</div>", toHtml: (a) => `<div>${a.shopName}</div>` }],
+      answers
+    );
+    expect(out).toBe(`<div>${answers.shopName}</div><div>${answers.shopName}</div>`);
+  });
+
+  it("差し込んだHTMLが後続 rawSwap の fromHtml に一致しても再置換されない", () => {
+    const out = applyRawSwaps(
+      "<i>A</i>",
+      [
+        { fromHtml: "<i>A</i>", toHtml: () => "<i>B</i>" },
+        { fromHtml: "<i>B</i>", toHtml: () => "<i>C</i>" },
+      ],
+      answers
+    );
+    expect(out).toBe("<i>B</i>");
+  });
+});
+
+describe("書き出しHTML: 二重置換の回帰（実テンプレ）", () => {
+  /**
+   * 回帰（欠陥1）: サロンの料金スワップは ¥0 / ¥1,980 / ¥4,800 を順に置換する。
+   * 逐次置換だと「プラン1の価格に ¥1,980（＝プラン2のスワップ元と同じ文字列）」を
+   * 入力した瞬間、差し込んだ値が次のスワップに食われてプラン2の価格へ化けていた。
+   */
+  it("プラン1の価格に他プランのスワップ元と同じ文字列を入れても入力どおり出る", async () => {
+    const answers: LpAnswers = {
+      ...salonTemplate.defaults,
+      photos: [],
+      plans: [
+        { ...salonTemplate.defaults.plans[0], price: "¥1,980" },
+        { ...salonTemplate.defaults.plans[1], price: "¥5,800" },
+        { ...salonTemplate.defaults.plans[2], price: "¥18,500" },
+      ],
+    };
+    const html = await buildLpDocument(salonTemplate, answers, { pro: false });
+
+    expect(countOf(html, "¥1,980")).toBe(1);
+    expect(countOf(html, "¥5,800")).toBe(1);
+    expect(countOf(html, "¥18,500")).toBe(1);
+    // スワップ元の素の価格は残らない
+    expect(html).not.toContain("¥4,800");
+  });
+
+  it("プラン2の価格に他プランのスワップ元と同じ文字列を入れても表示が崩れない", async () => {
+    const answers: LpAnswers = {
+      ...salonTemplate.defaults,
+      photos: [],
+      plans: [
+        { ...salonTemplate.defaults.plans[0], price: "¥3,000" },
+        { ...salonTemplate.defaults.plans[1], price: "¥4,800" },
+        { ...salonTemplate.defaults.plans[2], price: "¥12,000" },
+      ],
+    };
+    const html = await buildLpDocument(salonTemplate, answers, { pro: false });
+
+    expect(countOf(html, "¥3,000")).toBe(1);
+    expect(countOf(html, "¥4,800")).toBe(1);
+    expect(countOf(html, "¥12,000")).toBe(1);
+    expect(html).not.toContain("¥¥");
   });
 });
 

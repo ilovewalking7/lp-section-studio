@@ -28,6 +28,7 @@ import {
   saveDraft,
   saveProject,
   type DraftSaveResult,
+  type DraftScope,
   type SavedProject,
   type ShareState,
 } from "./share";
@@ -35,6 +36,7 @@ import type {
   Feature,
   IndustryTemplate,
   LpAnswers,
+  LpPhoto,
   PricePlan,
   Testimonial,
 } from "./types";
@@ -123,6 +125,9 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
   const [step, setStep] = useState<Step>(initial.step);
   const [templateId, setTemplateId] = useState<string>(initial.templateId);
   const [answers, setAnswers] = useState<LpAnswers>(initial.answers);
+  // 別の業種テンプレへの切り替え待ち（入力済みのときだけ確認を挟むための保留先）
+  const [pendingTemplate, setPendingTemplate] =
+    useState<IndustryTemplate | null>(null);
   const [projectName, setProjectName] = useState("");
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [projects, setProjects] = useState<SavedProject[]>(() => listProjects());
@@ -142,6 +147,19 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
     initial.fromShare ? null : loadDraft()
   );
 
+  /*
+   * 共有URL（#c=…）から開いたセッションの自動保存先を分ける理由:
+   * 共有された内容は「他人の作業」であり、自分のドラフトと同じキーに書くと
+   * 開いて1文字触っただけで自分の続きが復元不能に失われる。
+   * 対処の候補は「初回編集時に上書き可否を確認する」もあったが、
+   *  - 確認を出す時点で利用者は編集の途中であり、判断材料（消える内容）が手元にない
+   *  - どちらを選んでも片方は失われる／操作が1つ増える
+   * のに対し、キーを分ければ両方とも無傷で残り、確認そのものが不要になるため
+   * 「保存先を分ける」方式を採った。共有セッションの編集内容も misete:draft:shared に
+   * 残るので、閉じても捨てられない。
+   */
+  const draftScope: DraftScope = initial.fromShare ? "shared" : "own";
+
   const template: IndustryTemplate =
     LP_TEMPLATES.find((t) => t.id === templateId) ?? LP_TEMPLATES[0];
 
@@ -157,10 +175,10 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
   useEffect(() => {
     if (!dirty) return;
     const timer = setTimeout(() => {
-      setDraftStatus(saveDraft({ t: templateId, a: answers }));
+      setDraftStatus(saveDraft({ t: templateId, a: answers }, draftScope));
     }, DRAFT_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [dirty, templateId, answers]);
+  }, [dirty, templateId, answers, draftScope]);
 
   useEffect(() => {
     if (!notice) return;
@@ -180,11 +198,44 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
   );
   const exportBlocked = !pro && remainingExports <= 0;
 
-  const selectTemplate = (t: IndustryTemplate) => {
+  /**
+   * 失われる入力があるか。テンプレ適用時は t.defaults の参照をそのまま state に入れる
+   * ため、参照が別物であれば「利用者が編集した」「ドラフト・共有URL・保存済みプロジェクト
+   * を読み込んだ」のいずれかで、切り替えると消える中身があることを意味する。
+   */
+  const hasUserContent = answers !== template.defaults;
+
+  /** 業種テンプレを実際に適用する。写真は業種に依存しない資産なので引き継ぐ。 */
+  const applyTemplate = (t: IndustryTemplate) => {
     setTemplateId(t.id);
-    setAnswers(t.defaults);
+    setAnswers(
+      answers.photos.length > 0
+        ? { ...t.defaults, photos: answers.photos }
+        : t.defaults
+    );
+    setPendingTemplate(null);
     setDirty(true);
     setStep(2);
+  };
+
+  /**
+   * 業種カードが押されたときの分岐。
+   * ヘッダーから①に戻って押し直すのは「入力の続き」か「業種の変更」のどちらかで、
+   * 前者で入力を消してはいけない（30分の入力が確認なく消える事故になる）。
+   * - 同じ業種を選び直しただけ → 何も捨てずステップ2へ進むだけ
+   * - 別の業種へ切り替え & 入力済み → 確認を挟む（既定値のままなら黙って切り替える）
+   */
+  const selectTemplate = (t: IndustryTemplate) => {
+    if (t.id === templateId) {
+      setPendingTemplate(null);
+      setStep(2);
+      return;
+    }
+    if (hasUserContent) {
+      setPendingTemplate(t);
+      return;
+    }
+    applyTemplate(t);
   };
 
   /** 各ステップから呼ばれる回答の更新操作（変更のたびに自動保存の対象になる） */
@@ -214,6 +265,12 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
       }));
       setDirty(true);
     },
+    // 写真の取り込みは圧縮（await）をまたぐため、呼び出し側から渡された更新関数を
+    // そのまま setAnswers の中で適用する（開始時点の配列で上書きしない）。
+    updatePhotos: (update: (prev: LpPhoto[]) => LpPhoto[]) => {
+      setAnswers((prev) => ({ ...prev, photos: update(prev.photos) }));
+      setDirty(true);
+    },
   };
 
   const handleDownload = async () => {
@@ -232,12 +289,16 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
     }
   };
 
+  // HTMLのコピーはダウンロードと同一の成果物を渡す操作のため、ダウンロードと
+  // まったく同じ上限判定・回数消費を通す（片方だけ素通しでは唯一の収益ゲートが無効になる）。
   const handleCopyHtml = async () => {
+    if (exportBlocked || copyingHtml) return;
     setExportError(null);
     setCopyingHtml(true);
     try {
       const html = await buildLpDocument(template, answers, { pro });
       await navigator.clipboard.writeText(html);
+      if (!pro) incMonthExports();
       setNotice("HTMLをコピーしました");
     } catch (e) {
       setExportError(e instanceof Error ? e.message : "コピーに失敗しました");
@@ -280,6 +341,7 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
     setAnswers(p.state.a);
     setProjectName(p.name);
     setPendingDraft(null);
+    setPendingTemplate(null);
     setStep(3);
   };
 
@@ -299,12 +361,13 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
     setTemplateId(found.id);
     setAnswers(pendingDraft.a);
     setPendingDraft(null);
+    setPendingTemplate(null);
     setStep(2);
   };
 
   /** ドラフトを捨てて新規に始める */
   const handleDiscardDraft = () => {
-    clearDraft();
+    clearDraft(draftScope);
     setPendingDraft(null);
     setDraftStatus(null);
   };
@@ -328,6 +391,11 @@ export default function LpBuilder({ onHome, onPricing }: LpBuilderProps) {
             projects={projects}
             onLoadProject={handleLoadProject}
             onSelect={selectTemplate}
+            pendingTemplate={pendingTemplate}
+            onConfirmTemplate={() => {
+              if (pendingTemplate) applyTemplate(pendingTemplate);
+            }}
+            onCancelTemplate={() => setPendingTemplate(null)}
           />
         )}
         {step === 2 && (

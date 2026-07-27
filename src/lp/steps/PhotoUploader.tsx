@@ -19,7 +19,13 @@ export default function PhotoUploader({
   onChange,
 }: {
   photos: LpPhoto[];
-  onChange: (photos: LpPhoto[]) => void;
+  /**
+   * 写真リストの更新。圧縮（await）をまたぐ非同期処理から呼ばれるため、必ず
+   * 「直前の値から次の値を作る」関数更新形で渡す。配列そのものを渡す形にすると
+   * 圧縮開始時点の photos がクロージャに焼き付き、圧縮中に行われた編集・削除を
+   * 完了時に巻き戻してしまう。
+   */
+  onChange: (update: (prev: LpPhoto[]) => LpPhoto[]) => void;
 }) {
   const inputId = useId();
   const [busy, setBusy] = useState(false);
@@ -60,26 +66,32 @@ export default function PhotoUploader({
       setBusy(false);
     }
 
-    if (added.length > 0) onChange([...photos, ...added].slice(0, MAX_PHOTOS));
+    // 圧縮中に行われた編集・削除を巻き戻さないよう、開始時点の photos ではなく
+    // 「そのときの最新の値」に対して追記する。
+    if (added.length > 0) {
+      onChange((prev) => [...prev, ...added].slice(0, MAX_PHOTOS));
+    }
     setError(failure);
   };
 
   const updateAlt = (index: number, alt: string) => {
-    onChange(photos.map((p, i) => (i === index ? { ...p, alt } : p)));
+    onChange((prev) => prev.map((p, i) => (i === index ? { ...p, alt } : p)));
   };
 
   const removePhoto = (index: number) => {
-    onChange(photos.filter((_, i) => i !== index));
+    onChange((prev) => prev.filter((_, i) => i !== index));
   };
 
   /** 表示順の入れ替え（ドラッグ不要。上げ下げボタンだけで完結させる） */
   const movePhoto = (index: number, direction: -1 | 1) => {
-    const to = index + direction;
-    if (to < 0 || to >= photos.length) return;
-    const next = [...photos];
-    const [moved] = next.splice(index, 1);
-    next.splice(to, 0, moved);
-    onChange(next);
+    onChange((prev) => {
+      const to = index + direction;
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
   };
 
   return (
@@ -162,9 +174,12 @@ export default function PhotoUploader({
                 alt={photo.alt || "説明が未入力の写真"}
                 className="aspect-[4/3] w-full rounded-md border object-cover"
               />
+              {/* 圧縮中は一覧側の操作を止める。取り込み完了で並びが変わるため、
+                  途中で編集・削除・並べ替えをすると利用者の意図とずれた結果になる。 */}
               <PhotoAltField
                 index={i}
                 value={photo.alt}
+                disabled={busy}
                 onChange={(v) => updateAlt(i, v)}
               />
               <div className="flex items-center gap-1">
@@ -173,7 +188,7 @@ export default function PhotoUploader({
                   variant="ghost"
                   className="size-8"
                   aria-label={`${i + 1}枚目の写真を前へ移動`}
-                  disabled={i === 0}
+                  disabled={busy || i === 0}
                   onClick={() => movePhoto(i, -1)}
                 >
                   <ArrowUp />
@@ -183,7 +198,7 @@ export default function PhotoUploader({
                   variant="ghost"
                   className="size-8"
                   aria-label={`${i + 1}枚目の写真を後ろへ移動`}
-                  disabled={i === photos.length - 1}
+                  disabled={busy || i === photos.length - 1}
                   onClick={() => movePhoto(i, 1)}
                 >
                   <ArrowDown />
@@ -193,6 +208,7 @@ export default function PhotoUploader({
                   variant="ghost"
                   className="ml-auto size-8 text-destructive hover:text-destructive"
                   aria-label={`${i + 1}枚目の写真を削除`}
+                  disabled={busy}
                   onClick={() => removePhoto(i)}
                 >
                   <Trash2 />
@@ -210,10 +226,13 @@ export default function PhotoUploader({
 function PhotoAltField({
   index,
   value,
+  disabled,
   onChange,
 }: {
   index: number;
   value: string;
+  /** 圧縮中は編集させない（取り込み完了で並びが変わるため） */
+  disabled: boolean;
   onChange: (v: string) => void;
 }) {
   const id = useId();
@@ -225,6 +244,7 @@ function PhotoAltField({
       <Input
         id={id}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         placeholder="露天風呂"
         className="h-8 text-xs"

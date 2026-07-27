@@ -64,6 +64,9 @@ export default function IndustryStep({
   projects,
   onLoadProject,
   onSelect,
+  pendingTemplate,
+  onConfirmTemplate,
+  onCancelTemplate,
 }: {
   /** 自動保存されたドラフト（あれば再開を提示する。勝手には復元しない） */
   draft: ShareState | null;
@@ -72,6 +75,10 @@ export default function IndustryStep({
   projects: SavedProject[];
   onLoadProject: (p: SavedProject) => void;
   onSelect: (t: IndustryTemplate) => void;
+  /** 入力済みの状態で別の業種が選ばれたときの切り替え先（確認待ち。無ければ null） */
+  pendingTemplate: IndustryTemplate | null;
+  onConfirmTemplate: () => void;
+  onCancelTemplate: () => void;
 }) {
   return (
     <section className="space-y-12">
@@ -126,6 +133,13 @@ export default function IndustryStep({
             業種に合わせたデザインテンプレートで、質の高いLPをすぐに作成できます。
           </p>
         </div>
+        {pendingTemplate && (
+          <SwitchTemplateBanner
+            template={pendingTemplate}
+            onConfirm={onConfirmTemplate}
+            onCancel={onCancelTemplate}
+          />
+        )}
         {/* テンプレが増減しても崩れないよう、カード幅で折り返す（auto-fit） */}
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
           {LP_TEMPLATES.map((t) => {
@@ -252,6 +266,46 @@ function ResumeDraftBanner({
         </Button>
         <Button size="sm" variant="ghost" onClick={onDiscard}>
           新規で始める
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 別の業種テンプレへ切り替える前の確認。
+ * 入力済みの内容は切り替え先のサンプル文言に置き換わるため、押し間違いで消さないよう
+ * ここで一度受け止める（ネイティブの confirm は使わず、意匠を ResumeDraftBanner に揃える）。
+ */
+function SwitchTemplateBanner({
+  template,
+  onConfirm,
+  onCancel,
+}: {
+  template: IndustryTemplate;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4"
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">
+          「{template.name}」に切り替えますか？
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          入力済みの内容は「{template.name}
+          」のサンプル文言に置き換わります（写真はそのまま引き継ぎます）。
+        </p>
+      </div>
+      <div className="ml-auto flex flex-wrap gap-2">
+        <Button size="sm" onClick={onConfirm}>
+          切り替える
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          やめる
         </Button>
       </div>
     </div>

@@ -278,3 +278,23 @@ describe("CSSドリフト契約: lp.css に各テンプレの利用クラスが�
     }
   );
 });
+
+// ── 一時的なダンプ（作業用・後で削除） ──────────────────────────────
+import { writeFileSync, mkdirSync } from "node:fs";
+describe("TMPDUMP", () => {
+  it("dump", async () => {
+    const dir = "/tmp/claude-0/-home-user-app-040/dfcc4674-c2a0-54be-89b9-74fe80b3dbb5/scratchpad/raw";
+    mkdirSync(dir, { recursive: true });
+    for (const t of [ryokanTemplate, salonTemplate, clinicTemplate, restaurantTemplate]) {
+      for (const sec of t.sections) {
+        const entry = registry.find((e) => e.id === sec.demoId);
+        if (!entry) continue;
+        const Comp: ComponentType = await entry.load();
+        const html = server.renderToStaticMarkup(createElement(Comp));
+        writeFileSync(`${dir}/${t.id}--${sec.id}--raw.html`, html);
+        writeFileSync(`${dir}/${t.id}--${sec.id}--swapped.html`, swapHtml(html, sec.swaps, t.defaults));
+      }
+    }
+    expect(true).toBe(true);
+  });
+});

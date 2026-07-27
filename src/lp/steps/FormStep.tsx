@@ -13,6 +13,7 @@ import type {
   Feature,
   IndustryTemplate,
   LpAnswers,
+  LpPhoto,
   PricePlan,
   Testimonial,
 } from "../types";
@@ -23,6 +24,11 @@ export interface AnswerEditor {
   updateFeature: (index: 0 | 1 | 2, patch: Partial<Feature>) => void;
   updatePlan: (index: 0 | 1 | 2, patch: Partial<PricePlan>) => void;
   updateTestimonial: (index: 0 | 1 | 2, patch: Partial<Testimonial>) => void;
+  /**
+   * 写真だけは圧縮（await）をまたぐ非同期処理から更新されるため、値ではなく
+   * 関数更新形で受ける（update("photos", …) だと開始時点の配列で上書きしてしまう）。
+   */
+  updatePhotos: (update: (prev: LpPhoto[]) => LpPhoto[]) => void;
 }
 
 /** 進み具合バーの対象になる必須項目 */
@@ -257,7 +263,7 @@ export default function FormStep({
       >
         <PhotoUploader
           photos={answers.photos}
-          onChange={(photos) => editor.update("photos", photos)}
+          onChange={editor.updatePhotos}
         />
         <Note>
           写真はLPに直接埋め込まれます（外部サーバー不要）。

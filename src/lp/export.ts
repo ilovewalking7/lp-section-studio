@@ -6,7 +6,7 @@
 import { createElement } from "react";
 import { registry } from "@/registry";
 import { formatHtml } from "@/lib/vanilla";
-import { escapeHtml, swapHtml } from "./swap";
+import { escapeHtml, replaceAllInOnePass, swapHtml } from "./swap";
 import { SITE_URL } from "./lpPlan";
 import PhotoShowcase from "./sections/PhotoShowcase";
 import type { IndustryTemplate, LpAnswers, RawSwap, SectionSlot } from "./types";
@@ -67,8 +67,10 @@ function badgeHtml(): string {
 const ALLOWED_CTA_HREF_RE = /^(?:tel:|mailto:|https:|http:|#)/;
 
 /**
- * スワップ適用後のセクションHTMLに対し、rawSwaps（HTML断片ごとの完全一致置換）を順に適用する。
- * SectionSlot.rawSwaps が無いセクションはそのまま返す。全出現を置換する（split/join）。
+ * スワップ適用後のセクションHTMLに対し、rawSwaps（HTML断片ごとの完全一致置換）を適用する。
+ * SectionSlot.rawSwaps が無いセクションはそのまま返す。全出現を置換する。
+ * swapHtml と同じ1パス同時置換（replaceAllInOnePass）を使う。逐次置換だと、差し込んだ
+ * HTML断片が後続 rawSwap の fromHtml に一致したときに二重置換されるため。
  * プレビュー（SwapBoundary）はテキストノード単位でしか置換できないため、rawSwaps は
  * この書き出しパスでのみ適用される既知の制約がある（docs/LP-BUILDER.md参照）。
  */
@@ -78,11 +80,10 @@ export function applyRawSwaps(
   a: LpAnswers
 ): string {
   if (!rawSwaps || rawSwaps.length === 0) return html;
-  let out = html;
-  for (const raw of rawSwaps) {
-    out = out.split(raw.fromHtml).join(raw.toHtml(a));
-  }
-  return out;
+  return replaceAllInOnePass(
+    html,
+    rawSwaps.map((raw) => ({ from: raw.fromHtml, to: raw.toHtml(a) }))
+  );
 }
 
 /**
@@ -93,9 +94,14 @@ export function applyRawSwaps(
  * ミニマル系デモのようにCTAが元々 <button> ではなく "#" のダミーリンクの場合）の
  * href="#" だけを ctaHref に書き換える（既に "#" 以外の実リンク先を持つ <a> は対象外）。
  * ctaHref が許可スキーム（tel:/mailto:/https:/http:/#）でない・空文字の場合は変換しない。
+ * ctaLabel が空・空白のみの場合も変換しない（フォームはCTA文言の未入力を許すため実際に
+ * 到達する。escapeHtml("") === "" で inner.includes("") が常に true となり、ページ内の
+ * 全 <button> と全 <a href="#"> をCTA先へ書き換えてしまう＝ナビの「ホーム」で電話が
+ * 発信されるため）。
  */
 export function linkifyCta(html: string, ctaLabel: string, ctaHref: string): string {
   if (!ALLOWED_CTA_HREF_RE.test(ctaHref)) return html;
+  if (ctaLabel.trim() === "") return html;
   const escapedLabel = escapeHtml(ctaLabel);
   const escapedHref = escapeHtml(ctaHref);
   const withButtons = html.replace(

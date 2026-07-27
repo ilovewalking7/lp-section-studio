@@ -112,9 +112,16 @@ export function useLpPlan(): {
   setPlan: (p: PlanId) => void;
 } {
   const [plan, setPlanState] = useState<PlanId>(() => {
-    const v = (typeof localStorage !== "undefined" &&
-      localStorage.getItem(LP_PLAN_KEY)) as PlanId | null;
-    return v === "pro" || v === "studio" || v === "free" ? v : "free";
+    // Cookie／サイトデータを拒否した環境では localStorage は「未定義」ではなく
+    // getter 自体が例外（SecurityError）を投げる。typeof ガードでは防げず、ここは
+    // LpBuilder の最初のフックのためページ全体が白画面になる。本ファイルの他の
+    // アクセス（getMonthExports / incMonthExports）と同じく握りつぶして既定値に倒す。
+    try {
+      const v = localStorage.getItem(LP_PLAN_KEY) as PlanId | null;
+      return v === "pro" || v === "studio" || v === "free" ? v : "free";
+    } catch {
+      return "free";
+    }
   });
   useEffect(() => {
     try {

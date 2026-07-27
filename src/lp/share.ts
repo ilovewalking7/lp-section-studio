@@ -272,6 +272,21 @@ export function deleteProject(id: string): void {
 
 const DRAFT_KEY = "misete:draft";
 
+/**
+ * 共有URL（#c=…）から開いたセッション用の自動保存キー。
+ * 共有された内容は「他人の作業」であり、自分の作業ドラフト（DRAFT_KEY）と同じ枠に
+ * 書き込むと開いて1文字触るだけで自分の続きが失われる。保存先ごと分けて隔離する。
+ */
+const SHARED_DRAFT_KEY = "misete:draft:shared";
+
+/** 自動保存の保存先。"own" = 自分の作業、"shared" = 共有URLから開いたセッション。 */
+export type DraftScope = "own" | "shared";
+
+const DRAFT_KEYS: Record<DraftScope, string> = {
+  own: DRAFT_KEY,
+  shared: SHARED_DRAFT_KEY,
+};
+
 /** 自動保存の結果。写真ごと保存できたか、容量超過で写真を落としたか、保存できなかったか。 */
 export type DraftSaveResult = "saved" | "saved-without-photos" | "failed";
 
@@ -281,14 +296,18 @@ export type DraftSaveResult = "saved" | "saved-without-photos" | "failed";
  * 容量超過で失敗した場合は写真を除いてもう一度だけ試す。呼び出し側は戻り値を見て
  * 「写真は自動保存されていない」ことを利用者に伝えられる。
  */
-export function saveDraft(state: ShareState): DraftSaveResult {
+export function saveDraft(
+  state: ShareState,
+  scope: DraftScope = "own"
+): DraftSaveResult {
+  const key = DRAFT_KEYS[scope];
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
+    localStorage.setItem(key, JSON.stringify(state));
     return "saved";
   } catch {
     try {
       localStorage.setItem(
-        DRAFT_KEY,
+        key,
         JSON.stringify({ ...state, a: { ...state.a, photos: [] } })
       );
       return "saved-without-photos";
@@ -299,9 +318,9 @@ export function saveDraft(state: ShareState): DraftSaveResult {
 }
 
 /** 自動保存されたドラフトを読み出す（無い・壊れている場合は null）。 */
-export function loadDraft(): ShareState | null {
+export function loadDraft(scope: DraftScope = "own"): ShareState | null {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
+    const raw = localStorage.getItem(DRAFT_KEYS[scope]);
     if (!raw) return null;
     return normalizeShareState(JSON.parse(raw));
   } catch {
@@ -310,9 +329,9 @@ export function loadDraft(): ShareState | null {
 }
 
 /** 自動保存されたドラフトを破棄する。 */
-export function clearDraft(): void {
+export function clearDraft(scope: DraftScope = "own"): void {
   try {
-    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(DRAFT_KEYS[scope]);
   } catch {
     /* noop */
   }

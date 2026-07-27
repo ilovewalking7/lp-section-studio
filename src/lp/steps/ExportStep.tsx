@@ -200,7 +200,7 @@ export default function ExportStep({
         <CardHeader>
           <CardTitle className="text-base">共有・コピー・保存</CardTitle>
           <CardDescription>
-            共有URLは無料・無制限です。書き出し回数にはカウントされません。
+            共有URLは無料・無制限で、書き出し回数にはカウントされません。HTMLのコピーはダウンロードと同じ成果物のため、書き出し回数を1回消費します。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -217,11 +217,12 @@ export default function ExportStep({
               )}
               {copiedShare ? "コピーしました" : "共有URLをコピー"}
             </Button>
+            {/* コピーもダウンロードと同一の成果物を渡すため、上限に達したら同じく止める */}
             <Button
               variant="outline"
               size="sm"
               onClick={actions.onCopyHtml}
-              disabled={copyingHtml}
+              disabled={exportBlocked || copyingHtml}
             >
               {copyingHtml ? (
                 <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
@@ -231,6 +232,13 @@ export default function ExportStep({
               HTMLをコピー
             </Button>
           </div>
+          {exportBlocked && (
+            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+              <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              今月の書き出し上限（{FREE_MONTHLY_EXPORT_LIMIT}
+              回）に達しているため、HTMLのコピーもできません。共有URLのコピーは引き続きご利用いただけます。
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
             共有URLに写真は含まれません（URLが長くなりすぎるため）。写真ごと渡すときはHTMLをダウンロードしてください。
           </p>

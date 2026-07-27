@@ -1,8 +1,9 @@
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routeFromPath } from "@/App";
 import LpBuilder, { PreviewErrorBoundary } from "./LpBuilder";
 import { buildLpDocument } from "./export";
+import { fileToCompressedDataUrl } from "./photo";
 import { encodeShare, decodeShare, loadDraft, type ShareState } from "./share";
 import { FREE_MONTHLY_EXPORT_LIMIT, incMonthExports } from "./lpPlan";
 import {
@@ -216,6 +217,123 @@ describe("ステップ2（内容入力）", () => {
   });
 });
 
+describe("写真の取り込み（圧縮中の編集が巻き戻らない）", () => {
+  const compress = vi.mocked(fileToCompressedDataUrl);
+
+  /** 隠し <input type="file"> にファイルを流し込む（jsdom では files に代入できない） */
+  function selectPhoto(input: HTMLInputElement, name: string) {
+    Object.defineProperty(input, "files", {
+      value: [new File(["dummy"], name, { type: "image/jpeg" })],
+      configurable: true,
+    });
+    fireEvent.change(input);
+  }
+
+  it("圧縮中は一覧の編集・削除・並べ替えを止め、完了時に直前の編集を巻き戻さない", async () => {
+    const view = renderFormStep();
+    const input = view.getByLabelText("写真を選ぶ") as HTMLInputElement;
+
+    // 先に2枚取り込む（並べ替えボタンが「busy 以外の理由」では無効にならない状態を作る）
+    selectPhoto(input, "one.jpg");
+    await waitFor(() =>
+      expect(view.getAllByLabelText(/写真の説明/)).toHaveLength(1)
+    );
+    selectPhoto(input, "two.jpg");
+    await waitFor(() =>
+      expect(view.getAllByLabelText(/写真の説明/)).toHaveLength(2)
+    );
+
+    const firstAlt = view.getByLabelText(
+      "1枚目の写真の説明（例: 露天風呂）"
+    ) as HTMLInputElement;
+    fireEvent.change(firstAlt, { target: { value: "露天風呂" } });
+    view.getByAltText("露天風呂");
+
+    // 3枚目の圧縮を保留させ、「圧縮しています…」の最中を作る
+    let release: (dataUrl: string) => void = () => {};
+    compress.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          release = resolve;
+        })
+    );
+    selectPhoto(input, "three.jpg");
+    await view.findByText("圧縮しています…");
+
+    // ① UI層: 圧縮中は編集・削除・並べ替えを受け付けない
+    expect(firstAlt.disabled).toBe(true);
+    expect(
+      (view.getByRole("button", { name: "1枚目の写真を削除" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+    expect(
+      (
+        view.getByRole("button", {
+          name: "1枚目の写真を後ろへ移動",
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+
+    // ② state層: それでも更新は関数更新形（＝開始時点の配列で上書きしない）であること。
+    //    実ブラウザでは上の disabled で止まるが、React は disabled な input にも
+    //    プログラム的な change を届けるため、ここで巻き戻りの有無を直接検証できる。
+    fireEvent.change(firstAlt, { target: { value: "貸切風呂" } });
+
+    act(() => {
+      release("data:image/jpeg;base64,/9j/4AAQSkZJRg==");
+    });
+    await waitFor(() =>
+      expect(view.getAllByLabelText(/写真の説明/)).toHaveLength(3)
+    );
+
+    // 圧縮中に行った編集が、完了時の追記で巻き戻っていないこと
+    expect(
+      (
+        view.getByLabelText(
+          "1枚目の写真の説明（例: 露天風呂）"
+        ) as HTMLInputElement
+      ).value
+    ).toBe("貸切風呂");
+    view.getByAltText("貸切風呂");
+  });
+
+  it("圧縮が終われば編集・削除の操作が戻る（ロックされたままにならない）", async () => {
+    const view = renderFormStep();
+    const input = view.getByLabelText("写真を選ぶ") as HTMLInputElement;
+
+    let release: (dataUrl: string) => void = () => {};
+    compress.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          release = resolve;
+        })
+    );
+    selectPhoto(input, "one.jpg");
+    await view.findByText("圧縮しています…");
+
+    act(() => {
+      release("data:image/jpeg;base64,/9j/4AAQSkZJRg==");
+    });
+    await waitFor(() =>
+      expect(view.getAllByLabelText(/写真の説明/)).toHaveLength(1)
+    );
+
+    expect(
+      (
+        view.getByLabelText(
+          "1枚目の写真の説明（例: 露天風呂）"
+        ) as HTMLInputElement
+      ).disabled
+    ).toBe(false);
+    const remove = view.getByRole("button", {
+      name: "1枚目の写真を削除",
+    }) as HTMLButtonElement;
+    expect(remove.disabled).toBe(false);
+    fireEvent.click(remove);
+    expect(view.queryAllByLabelText(/写真の説明/)).toHaveLength(0);
+  });
+});
+
 describe("自動保存（ドラフト）", () => {
   it("回答を変更すると保存され、開き直すと再開の選択肢が出る", () => {
     vi.useFakeTimers();
@@ -378,25 +496,212 @@ describe("共有: encodeShare/decodeShare 往復（ShareState経由・テンプ�
   });
 });
 
+/**
+ * 共有URL経由でプレビュー（ステップ3）から起動し、④書き出し・共有画面まで進める。
+ * （スティッキーなツールバーの「書き出しへ」は Suspense 配下ではなく常時
+ *   レンダリングされているため、プレビューの遅延ロード完了を待たずに押せる）
+ */
+function renderExportStep() {
+  const encoded = encodeShare({
+    t: ryokanTemplate.id,
+    a: ryokanTemplate.defaults,
+  });
+  window.location.hash = `#c=${encoded}`;
+  const view = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+  fireEvent.click(view.getByRole("button", { name: /書き出しへ/ }));
+  return view;
+}
+
 describe("クォータ枯渇時のUI挙動", () => {
+  /** jsdom に navigator.clipboard は無いため差し替える */
+  function stubClipboard() {
+    const clipboard = { writeText: vi.fn(async () => {}) };
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: clipboard,
+    });
+    return clipboard;
+  }
+
   it("月次上限に達した状態で共有URL復元 → 書き出しステップで上限表示が出る", () => {
     // Free プランの上限まで書き出し済みにしておく
     for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
 
-    // 共有URL経由でプレビュー画面（ステップ3）から起動させる
-    const encoded = encodeShare({ t: ryokanTemplate.id, a: ryokanTemplate.defaults });
-    window.location.hash = `#c=${encoded}`;
-
-    const { getByRole, getByText } = render(
-      <LpBuilder onHome={() => {}} onPricing={() => {}} />
-    );
-
-    // ③ プレビュー画面から④ 書き出し・共有画面へ
-    // （スティッキーなツールバーの「書き出しへ」は Suspense 配下ではなく常時
-    //   レンダリングされているため、プレビューの遅延ロード完了を待たずに押せる）
-    fireEvent.click(getByRole("button", { name: /書き出しへ/ }));
+    const { getByText } = renderExportStep();
 
     getByText(`今月の書き出し上限（${FREE_MONTHLY_EXPORT_LIMIT}回）に達しました。`);
+  });
+
+  it("上限に達したら「HTMLをコピー」も実行できない（ダウンロードの上限を迂回できない）", () => {
+    const clipboard = stubClipboard();
+    for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
+
+    const { getByRole, getByText } = renderExportStep();
+
+    const copy = getByRole("button", {
+      name: "HTMLをコピー",
+    }) as HTMLButtonElement;
+    expect(copy.disabled).toBe(true);
+    // 念のため押しても成果物は渡らない（ハンドラ側でも上限を判定している）
+    fireEvent.click(copy);
+    expect(clipboard.writeText).not.toHaveBeenCalled();
+    getByText(/HTMLのコピーもできません/);
+  });
+
+  it("「HTMLをコピー」でも書き出し回数を消費する", async () => {
+    const clipboard = stubClipboard();
+    // 残り1回の状態にする
+    for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT - 1; i++) incMonthExports();
+
+    const { getByRole, getByText, findByText } = renderExportStep();
+    const copy = getByRole("button", {
+      name: "HTMLをコピー",
+    }) as HTMLButtonElement;
+    expect(copy.disabled).toBe(false);
+
+    fireEvent.click(copy);
+    await findByText("HTMLをコピーしました");
+    expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+
+    // 1回消費され、上限に達した表示へ変わる／以後はコピーもできない
+    getByText(`今月の書き出し上限（${FREE_MONTHLY_EXPORT_LIMIT}回）に達しました。`);
+    expect(
+      (getByRole("button", { name: "HTMLをコピー" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+  });
+});
+
+describe("共有URLから開いたセッションの自動保存", () => {
+  it("自分のドラフトを上書きせず、共有用の別キーに保存する", () => {
+    vi.useFakeTimers();
+    try {
+      // 自分の作業を自動保存しておく
+      const own = renderFormStep();
+      fireEvent.change(own.getByLabelText("店名・屋号"), {
+        target: { value: "自分の宿" },
+      });
+      act(() => {
+        vi.advanceTimersByTime(DRAFT_WAIT_MS);
+      });
+      expect(loadDraft()?.a.shopName).toBe("自分の宿");
+      own.unmount();
+
+      // 他人の共有URLを開く（見に来た内容を優先するので復元バナーは出ない）
+      window.location.hash = `#c=${encodeShare({
+        t: salonTemplate.id,
+        a: salonTemplate.defaults,
+      })}`;
+      const shared = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+      expect(shared.queryByText("前回の続きから再開しますか？")).toBeNull();
+
+      // ③プレビューから②へ戻り、1文字だけ編集する
+      fireEvent.click(shared.getByRole("button", { name: /編集に戻る/ }));
+      fireEvent.change(shared.getByLabelText("店名・屋号"), {
+        target: { value: "共有された店を書き換え" },
+      });
+      act(() => {
+        vi.advanceTimersByTime(DRAFT_WAIT_MS);
+      });
+
+      // 自分のドラフトは無傷のまま、共有セッションの編集は別キーに残る
+      expect(loadDraft()?.a.shopName).toBe("自分の宿");
+      expect(loadDraft("shared")?.a.shopName).toBe("共有された店を書き換え");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("業種テンプレの選び直し", () => {
+  /** ②内容入力で店名を書き換えてから、①業種選択へ戻る */
+  function editThenBackToStep1() {
+    const view = renderFormStep();
+    fireEvent.change(view.getByLabelText("店名・屋号"), {
+      target: { value: "潮騒の宿かもめ" },
+    });
+    fireEvent.click(view.getByRole("button", { name: /業種選択に戻る/ }));
+    view.getByText("業種を選んでください");
+    return view;
+}
+
+  it("同じ業種カードを選び直しても入力は消えない", () => {
+    const view = editThenBackToStep1();
+
+    fireEvent.click(view.getByRole("button", { name: /旅館・民宿/ }));
+
+    view.getByText("LPの内容を入力してください");
+    expect(
+      (view.getByLabelText("店名・屋号") as HTMLInputElement).value
+    ).toBe("潮騒の宿かもめ");
+  });
+
+  it("別の業種へ切り替えるときは確認を挟み、「やめる」なら入力が残る", () => {
+    const view = editThenBackToStep1();
+
+    fireEvent.click(view.getByRole("button", { name: /サロン/ }));
+
+    // 確認が出るだけで、まだ切り替わっていない
+    view.getByText("「サロン」に切り替えますか？");
+    expect(view.queryByText("LPの内容を入力してください")).toBeNull();
+
+    fireEvent.click(view.getByRole("button", { name: "やめる" }));
+    expect(view.queryByText("「サロン」に切り替えますか？")).toBeNull();
+
+    // 元の業種に戻れば入力はそのまま
+    fireEvent.click(view.getByRole("button", { name: /旅館・民宿/ }));
+    expect(
+      (view.getByLabelText("店名・屋号") as HTMLInputElement).value
+    ).toBe("潮騒の宿かもめ");
+  });
+
+  it("確認して切り替えると、切り替え先のサンプル文言に入れ替わる", () => {
+    const view = editThenBackToStep1();
+
+    fireEvent.click(view.getByRole("button", { name: /サロン/ }));
+    fireEvent.click(view.getByRole("button", { name: "切り替える" }));
+
+    view.getByText("LPの内容を入力してください");
+    expect(
+      (view.getByLabelText("店名・屋号") as HTMLInputElement).value
+    ).toBe(salonTemplate.defaults.shopName);
+  });
+
+  it("既定値のまま（入力なし）なら確認を挟まずに切り替わる", () => {
+    const view = render(<LpBuilder onHome={() => {}} onPricing={() => {}} />);
+
+    fireEvent.click(view.getByRole("button", { name: /サロン/ }));
+
+    view.getByText("LPの内容を入力してください");
+    expect(
+      (view.getByLabelText("店名・屋号") as HTMLInputElement).value
+    ).toBe(salonTemplate.defaults.shopName);
+  });
+});
+
+describe("localStorage が使えない環境", () => {
+  it("getter が例外を投げてもビルダー全体は落ちない（プランは free 扱い）", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "localStorage");
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        // Cookie／サイトデータを拒否したブラウザの挙動（参照した時点で例外）
+        throw new Error("SecurityError: The operation is insecure.");
+      },
+    });
+    try {
+      const { getByText } = render(
+        <LpBuilder onHome={() => {}} onPricing={() => {}} />
+      );
+      // ①業種選択が普通に描画される（白画面にならない）
+      getByText("業種を選んでください");
+    } finally {
+      if (original) {
+        Object.defineProperty(window, "localStorage", original);
+      } else {
+        Reflect.deleteProperty(window, "localStorage");
+      }
+    }
   });
 });
 
