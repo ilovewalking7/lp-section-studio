@@ -15,7 +15,7 @@
 | キーボード操作 | 対話部品がキーボードで到達できるか |
 | 横スクロール | 実ブラウザ・幅375px でページが横に破れないか |
 
-**React が要らない現場でも使える。** `get_component_html` は React も Babel も含まない静的 HTML を返します。Tailwind を読み込むだけで表示されるので、PHP・Rails・Hugo・WordPress にもそのまま貼れます。
+**React が要らない現場でも使える。** `get_component_html` は React も Babel も含まない静的 HTML を返します。CSS もその1枚ぶんだけコンパイルして埋め込んであり、外部への通信が一切ないので、PHP・Rails・Hugo・WordPress にもそのまま貼れます。
 
 ## 導入
 
@@ -109,10 +109,10 @@ claude mcp add lp-section-studio -- npx -y lp-section-studio-mcp
 `class-variance-authority` と、同梱の UI プリミティブのみです。外部画像も
 使っていないので、ファイルを 1 つ置けば動きます。
 
-静的 HTML 版は Tailwind だけで動きますが、`bg-card` `text-muted-foreground`
-`bg-primary` などは**このコンポーネント集のデザイントークン**で、素の Tailwind
-には存在しません。買い切り版の HTML はこの定義を `<head>` に埋め込んだ状態で
-配布しているのでそのまま表示されます。自分でトークンを組み込む場合は、
+静的 HTML 版は CSS を `<head>` に埋め込んだ状態で返すので、Tailwind の
+読み込みも要りません。`bg-card` `text-muted-foreground` `bg-primary` などは
+**このコンポーネント集のデザイントークン**で素の Tailwind には存在しませんが、
+埋め込み済みの CSS の中で解決済みです。自分のビルドに載せ替える場合は、
 買い切り版の `components/theme/` にある `tailwind.config.js` と `tokens.css`
 を使ってください。
 

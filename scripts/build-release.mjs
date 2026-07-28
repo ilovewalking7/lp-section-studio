@@ -69,28 +69,42 @@ if (missing.length > 0) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// デザイントークンが HTML に入っているかの確認
+// 静的 HTML が本当に自己完結しているかの確認
 //
-// bg-card / text-muted-foreground のような**このプロジェクト固有のトークン**は
-// 素の Tailwind には存在しない（880 件中 430 件が使っている）。そのため
-// cdn.tailwindcss.com を1行読むだけの HTML では色が一切当たらない。
+// 「1枚のHTMLで完結」と謳って売る以上、開くたびに外部へ取りに行く作りでは
+// 通らない（オフライン・社内網・CDN障害で色が消える）。CSS は
+// scripts/build-static-html.mjs が1件ぶんコンパイルして <style> に埋めるので、
+// ここでは「埋まっているか」「外を読む記述が残っていないか」だけを検める。
+// 埋め込み自体をここでやらないのは、同じ内容を2箇所に持つと片方だけ直したときに
+// 配布物とスタジオの書き出しが食い違うため。
 //
-// この注入は書き出しの**源流**（src/lib/vanilla.ts の wrapDocument。設定は
-// scripts/build-vanilla-head.mjs が生成する src/lib/vanillaHead.generated.ts）で
-// 行うので、ここで配布時に足すことはしない。同じ内容を2箇所に持つと、
-// 片方だけ直したときに配布物とスタジオの書き出しが食い違うため。
-//
-// 代わりに「入っているか」だけを検める。入っていなければ材料が古い。
+// 実際に色が出るか（getComputedStyle での実測）は verify-release.mjs が見る。
 // ──────────────────────────────────────────────────────────────────────────
 
-/** トークン設定が入っていない HTML を洗い出し、あれば止める */
-function assertTokensInjected(label, htmls, how) {
-  const broken = htmls.filter(([, html]) => html && !html.includes("tailwind.config"));
+/** 外部からリソースを読む記述。<a href> や SVG の名前空間 URL は当たらない。 */
+const EXTERNAL_RESOURCE =
+  /<script[^>]+\bsrc\s*=\s*["']\s*(?:https?:)?\/\/|<link[^>]+\bhref\s*=\s*["']\s*(?:https?:)?\/\/|<(?:img|iframe|video|audio|source|embed)[^>]+\bsrc\s*=\s*["']\s*(?:https?:)?\/\/|@import[^;]*(?:https?:)?\/\/|url\(\s*["']?(?:https?:)?\/\//i;
+
+/**
+ * コンパイル済みの実CSSが埋まっているか。
+ * `--tw-border-spacing-x` は Tailwind の preflight が必ず出す変数なので、
+ * 部品が持つ独自の <style> と取り違えない。`--card:` は固有トークンの定義。
+ */
+const hasCompiledCss = (html) =>
+  html.includes("<style>") &&
+  html.includes("--tw-border-spacing-x") &&
+  html.includes("--card:");
+
+/** CSS が埋まっていない／外部を読む HTML を洗い出し、あれば止める */
+function assertSelfContained(label, htmls, how) {
+  const broken = htmls.filter(
+    ([, html]) => html && (!hasCompiledCss(html) || EXTERNAL_RESOURCE.test(html))
+  );
   if (broken.length > 0) {
     console.error(
-      `${label}: デザイントークンの設定が入っていない HTML が ${broken.length} 件あります。\n` +
+      `${label}: 自己完結していない HTML が ${broken.length} 件あります。\n` +
         `  例: ${broken.slice(0, 3).map(([name]) => name).join(", ")}\n` +
-        `  bg-card / text-muted-foreground などの色が出ない状態です。${how} を実行して作り直してください。`
+        `  CSS が埋め込まれていないか、外部を読む記述が残っています。${how} を実行して作り直してください。`
     );
     process.exit(1);
   }
@@ -191,7 +205,7 @@ const htmlSrc = resolve(ROOT, "public/html");
 const htmlDst = join(STAGE, "html");
 mkdirSync(htmlDst, { recursive: true });
 const htmlFiles = readdirSync(htmlSrc).filter((f) => f.endsWith(".html"));
-assertTokensInjected(
+assertSelfContained(
   "html/",
   htmlFiles.map((f) => [f, readFileSync(join(htmlSrc, f), "utf-8")]),
   "npm run html"
@@ -226,7 +240,7 @@ if (fullBundle.edition !== "full") {
   throw new Error(`MCP バンドルが full になっていません: ${fullBundle.edition}`);
 }
 // MCP が返す HTML も public/html/ から来るので、同じ検査を通す
-assertTokensInjected(
+assertSelfContained(
   "mcp/data/components.json",
   fullBundle.items.map((i) => [i.id, i.html]),
   "npm run html"
@@ -243,11 +257,16 @@ writeFileSync(
 copied++;
 
 // --- studio/ : ビルド済み ---
-// Vite は public/ をそのまま dist/ にコピーするので、dist/r と dist/html は
-// registry/ と html/ の丸ごと重複になる（合わせて 12MB）。
-// スタジオ本体はどちらも実行時に参照していないので外す。
+// Vite は public/ をそのまま dist/ にコピーするので、dist/r は registry/ の
+// 丸ごと重複になる（6MB）。スタジオ本体は実行時に参照していないので外す。
+//
+// dist/html は**外せない**。スタジオのバニラHTML書き出しは、その場で作らず
+// /html/<id>.html を取りに行くようになったため（ブラウザでは Tailwind を
+// コンパイルできない。src/components/PreviewCanvas.tsx を参照）。
+// html/ と同じ中身が studio/html にも入るが、これで「スタジオでコピーした
+// HTML」と「html/ に入っている HTML」が同一ファイルになる。
 const DIST = resolve(ROOT, "dist");
-const DIST_DUPES = new Set(["r", "html"]);
+const DIST_DUPES = new Set(["r"]);
 copyTree(DIST, join(STAGE, "studio"), {
   filter: (p) => !DIST_DUPES.has(relative(DIST, p)),
 });

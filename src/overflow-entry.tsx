@@ -2,7 +2,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { StrictMode } from "react";
 import { registry } from "@/registry";
-import { generateVanillaHtml } from "@/lib/vanilla";
+import { CSS_SLOT, generateVanillaHtml } from "@/lib/vanilla";
 import "./index.css";
 
 /**
@@ -12,6 +12,8 @@ import "./index.css";
  *   横スクロール検査に使う）
  * - `window.__staticHtml(id)` … React 抜きの静的 HTML を作る
  *   （scripts/build-static-html.mjs が使う）
+ * - `window.__cssSlot` … その HTML の中で、コンパイル済み CSS を差し込む目印
+ *   （同上。目印の定義を src/lib/vanilla.ts の1箇所に留めるために渡す）
  *
  * どちらもページ遷移を挟まず同じタブで差し替えるので、880 個でも数分で終わる。
  * 本番ビルドの入口は index.html のみなので、このファイルは配信物に入らない。
@@ -22,6 +24,7 @@ declare global {
     __mount: (id: string) => Promise<void>;
     __unmount: () => void;
     __staticHtml: (id: string) => Promise<string>;
+    __cssSlot: string;
   }
 }
 
@@ -29,6 +32,7 @@ const el = document.getElementById("root")!;
 let root: Root | null = null;
 
 window.__ids = registry.map((e) => e.id);
+window.__cssSlot = CSS_SLOT;
 
 window.__mount = async (id: string) => {
   const entry = registry.find((e) => e.id === id);

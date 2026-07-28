@@ -149,13 +149,15 @@ node scripts/verify-release.mjs # ZIPを展開して件数・混入・実描画�
 
 - `build-mcp-bundle.mjs --all` は出力先が `mcp/data/components.json` 固定で、
   リポジトリの無料版データを上書きしてしまう。退避 → 生成 → 復元している。
-- 静的HTML と MCP が返す HTML に、Tailwind のトークン設定が入っているかを検める。
-  素の `cdn.tailwindcss.com` には `bg-card` 等が無く、**880件中430件**がこれを
-  使っているため、入っていないとその分の色が一切出ない。埋め込み自体は書き出しの
-  源流（`src/lib/vanilla.ts` + `scripts/build-vanilla-head.mjs`）が行うので、
-  ここでは足さずに検査だけする（同じ内容を2箇所に持たないため）。
+- 静的HTML と MCP が返す HTML に実CSSが埋まっていて、外部を読む記述が残って
+  いないかを検める。埋め込み自体は `scripts/build-static-html.mjs` が
+  1件ぶんずつ Tailwind をコンパイルして行うので、ここでは足さずに検査だけする
+  （同じ内容を2箇所に持たないため）。**色が本当に出るか**は
+  `verify-release.mjs` が外部通信を遮断した実ブラウザで `getComputedStyle` を
+  読んで確かめる。
 - Vite が `public/` を丸ごと `dist/` に写すので、そのままだと `studio/` の中に
-  `registry/` と `html/` が二重で入る（12MB の無駄）。除外している。
+  `registry/` が二重で入る（6MB の無駄）。除外している。`html/` は逆に残す
+  （スタジオのバニラHTML書き出しが `/html/<id>.html` を取りに行くため）。
 - `node_modules` / `.git` / `.env` / `crawler/` などを混入させない。
 
 ---
@@ -196,8 +198,8 @@ node scripts/verify-release.mjs # ZIPを展開して件数・混入・実描画�
 - [x] zip を実際に展開し、README の手順どおりに動くかを別ディレクトリで確認
       → `verify-release.mjs`。展開して 4555 ファイル・全件数一致を確認済み
 - [x] 静的HTML を1つブラウザで開き、React 無しで表示されることを目視確認
-      → 実ブラウザで3件を実測。880件を走査して外部参照は
-        `cdn.tailwindcss.com` のみ、react も babel も含まれない
+      → 外部通信を遮断した実ブラウザで実測。880件を走査して外部参照は
+        **ゼロ**（CDN も Web フォントも無し）、react も babel も含まれない
 - [x] MCP 全部入り版を入れ、880個返ることを確認
       → ZIP から展開したサーバに stdio で JSON-RPC を投げ、
         `list_categories` が「収録 880 件 / 39 カテゴリ」を返すことを確認
