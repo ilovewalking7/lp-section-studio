@@ -449,7 +449,6 @@ const COPY = {
     footerFeatures: "機能",
     footerPricing: "料金",
     footerStudio: "スタジオ",
-    footerLpBuilder: "ミセテLP",
     footerGithub: "GitHub",
     footerDocs: "ドキュメント",
     footerRegistry: "レジストリ",
@@ -683,7 +682,6 @@ const COPY = {
     footerFeatures: "Features",
     footerPricing: "Pricing",
     footerStudio: "Studio",
-    footerLpBuilder: "Misete LP",
     footerGithub: "GitHub",
     footerDocs: "Docs",
     footerRegistry: "Registry",
@@ -1778,13 +1776,6 @@ export default function Landing({
               >
                 {t.footerStudio}
               </button>
-              <a
-                href="/lp"
-                className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Wand2 className="h-4 w-4" />
-                {t.footerLpBuilder}
-              </a>
               <a
                 href="https://github.com/ilovewalking7/app-035"
                 target="_blank"
