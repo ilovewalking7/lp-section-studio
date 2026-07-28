@@ -122,7 +122,11 @@ export default function AnchoredPricing() {
           <span className={cn(!annual && "font-semibold text-foreground", annual && "text-muted-foreground")}>
             {en ? "Monthly" : "月払い"}
           </span>
-          <Switch checked={annual} onCheckedChange={setAnnual} />
+          <Switch
+              checked={annual}
+              onCheckedChange={setAnnual}
+              aria-label={en ? "Switch to annual billing" : "年払いに切り替え"}
+            />
           <span className={cn(annual && "font-semibold text-foreground", !annual && "text-muted-foreground")}>
             {en ? "Annual" : "年払い"}
           </span>

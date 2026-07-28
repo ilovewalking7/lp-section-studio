@@ -24,8 +24,14 @@ jobs:
       - name: Build (registry + typecheck + vite build)
         run: npm run build
 
-      - name: Test (render all 260 components — no errors/warnings)
+      - name: Test (描画・コントラスト・a11y・キーボード)
         run: npm test
+
+      - name: Install Chromium (横スクロール検査用)
+        run: npx playwright install --with-deps chromium
+
+      - name: Check horizontal overflow (幅375pxで全件描画)
+        run: npm run check:overflow
 
       - name: Verify registry output exists
         run: test -f public/r/index.json && echo "registry OK"

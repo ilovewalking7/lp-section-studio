@@ -89,6 +89,7 @@ export default function SettingsPanel() {
                   setEmailNotif(v);
                   touch();
                 }}
+                aria-label={en ? "Email notifications" : "メール通知"}
               />
             </Row>
             <Row
@@ -106,6 +107,7 @@ export default function SettingsPanel() {
                   setPushNotif(v);
                   touch();
                 }}
+                aria-label={en ? "Push notifications" : "プッシュ通知"}
               />
             </Row>
           </div>
@@ -131,6 +133,7 @@ export default function SettingsPanel() {
                   setTwoFactor(v);
                   touch();
                 }}
+                aria-label={en ? "Two-factor authentication" : "二段階認証"}
               />
             </Row>
           </div>

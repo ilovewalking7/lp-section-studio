@@ -8,12 +8,29 @@ export interface SwitchProps {
   disabled?: boolean;
   className?: string;
   id?: string;
+  /**
+   * スイッチは中身が空の <button> なので、名前は外から与えるしかない。
+   * 隣に見出しテキストがあるなら aria-labelledby でその id を指すのが最良。
+   * 無ければ aria-label に用途を書く。どちらも無いとスクリーンリーダーでは
+   * 「スイッチ、オン」としか読まれず、何のスイッチか分からない。
+   */
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
 }
 
 /** 依存ゼロの軽量トグルスイッチ（controlled / uncontrolled 両対応） */
 const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
   (
-    { checked, defaultChecked, onCheckedChange, disabled, className, id },
+    {
+      checked,
+      defaultChecked,
+      onCheckedChange,
+      disabled,
+      className,
+      id,
+      "aria-label": ariaLabel,
+      "aria-labelledby": ariaLabelledBy,
+    },
     ref
   ) => {
     const isControlled = checked !== undefined;
@@ -33,6 +50,8 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         type="button"
         role="switch"
         aria-checked={on}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
         disabled={disabled}
         onClick={toggle}
         className={cn(
