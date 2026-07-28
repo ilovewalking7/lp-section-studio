@@ -14,9 +14,16 @@ describe("entry-server.render がマーケ面の HTML を返す", () => {
     expect(html).toContain("<h1");
   });
 
-  it("pricing はプラン内容を含む", () => {
+  it("pricing はプラン内容と価格を含む", () => {
     const html = render("pricing");
     expect(html.length).toBeGreaterThan(800);
-    expect(html).toContain("Pro");
+    // 買い切りの2択。プラン名と価格が静的HTMLに入っていないと、
+    // クローラにも JS 無効環境にも料金が伝わらない。
+    expect(html).toContain("無料");
+    expect(html).toContain("全部入り");
+    expect(html).toContain("¥9,800");
+    expect(html).toContain("買い切り");
+    // 月額の名残が残っていないこと
+    expect(html).not.toContain("/月");
   });
 });

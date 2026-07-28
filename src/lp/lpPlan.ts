@@ -4,13 +4,24 @@
  * 既存プラン（src/lib/plan.ts）とは別サービスのため独立した定義を持つ。
  */
 import { useEffect, useState } from "react";
-import type { PlanId } from "@/lib/plan";
+
+/**
+ * ミセテLP のプラン識別子。コンポーネント集（src/lib/plan.ts）は
+ * 買い切りの2択だが、こちらは別サービスで料金体系も違うため独立させる。
+ * 以前は PlanId を借りていたが、片方の値を変えるともう片方が壊れていた。
+ */
+export type LpPlanId = "free" | "pro" | "studio";
 
 export interface LpPlanTier {
-  id: "free" | "pro" | "studio";
+  id: LpPlanId;
   name: string;
   priceLabel: string;
   features: string[];
+}
+
+/** ミセテLP で Pro 以上か（書き出し無制限・バッジ非表示の解放判定） */
+export function isLpPro(plan: LpPlanId): boolean {
+  return plan === "pro" || plan === "studio";
 }
 
 export const LP_PLANS: readonly LpPlanTier[] = [
@@ -108,16 +119,16 @@ const LP_PLAN_KEY = "lp:plan";
  * 別サービスの状態として独立に持つ（Studio 側の "cs:plan" には一切触れない）。
  */
 export function useLpPlan(): {
-  plan: PlanId;
-  setPlan: (p: PlanId) => void;
+  plan: LpPlanId;
+  setPlan: (p: LpPlanId) => void;
 } {
-  const [plan, setPlanState] = useState<PlanId>(() => {
+  const [plan, setPlanState] = useState<LpPlanId>(() => {
     // Cookie／サイトデータを拒否した環境では localStorage は「未定義」ではなく
     // getter 自体が例外（SecurityError）を投げる。typeof ガードでは防げず、ここは
     // LpBuilder の最初のフックのためページ全体が白画面になる。本ファイルの他の
     // アクセス（getMonthExports / incMonthExports）と同じく握りつぶして既定値に倒す。
     try {
-      const v = localStorage.getItem(LP_PLAN_KEY) as PlanId | null;
+      const v = localStorage.getItem(LP_PLAN_KEY) as LpPlanId | null;
       return v === "pro" || v === "studio" || v === "free" ? v : "free";
     } catch {
       return "free";

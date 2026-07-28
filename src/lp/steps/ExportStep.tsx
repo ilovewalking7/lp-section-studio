@@ -33,14 +33,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { PlanId } from "@/lib/plan";
+import type { LpPlanId } from "../lpPlan";
 import { FREE_MONTHLY_EXPORT_LIMIT, LP_PLANS, getStripeLink } from "../lpPlan";
 import type { SavedProject } from "../share";
 import type { IndustryTemplate, LpAnswers } from "../types";
 
 /** 書き出しまわりの状態 */
 export interface ExportStatus {
-  plan: PlanId;
+  plan: LpPlanId;
   pro: boolean;
   remainingExports: number;
   exportBlocked: boolean;
@@ -68,7 +68,7 @@ export interface ExportActions {
   onSaveProject: () => void;
   onLoadProject: (p: SavedProject) => void;
   onDeleteProject: (id: string) => void;
-  onSetPlan: (p: PlanId) => void;
+  onSetPlan: (p: LpPlanId) => void;
   onBack: () => void;
 }
 

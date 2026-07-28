@@ -923,12 +923,23 @@ export default function Landing({
 
   const plans = getPlans(lang);
 
-  const priceLabel = (priceMonthly: number) =>
-    priceMonthly === 0
+  /** 買い切りなので「/月」は付けない。0 円は無料表記。 */
+  const priceLabel = (price: number) =>
+    price === 0
       ? lang === "ja"
         ? "¥0"
         : "Free"
-      : `$${priceMonthly}${lang === "ja" ? "/月" : "/mo"}`;
+      : `¥${price.toLocaleString("ja-JP")}`;
+
+  /** 価格の横に添える但し書き（無料 / 買い切り） */
+  const priceSuffix = (price: number) =>
+    price === 0
+      ? lang === "ja"
+        ? "登録不要"
+        : "no sign-up"
+      : lang === "ja"
+        ? "買い切り"
+        : "one time";
 
   const heroGlowStyle: CSSProperties = {
     background: `radial-gradient(420px circle at ${glow.x}% ${glow.y}%, ${theme.glow}, transparent 70%)`,
@@ -1613,9 +1624,11 @@ export default function Landing({
                       <p className="text-sm text-muted-foreground">{plan.tagline}</p>
                       <div className="mt-4 flex items-baseline gap-1">
                         <span className="text-4xl font-bold tracking-tight">
-                          {priceLabel(plan.priceMonthly)}
+                          {priceLabel(plan.price)}
                         </span>
-                        <span className="text-sm text-muted-foreground">/ {plan.seats}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {priceSuffix(plan.price)}
+                        </span>
                       </div>
                     </CardHeader>
                     <CardContent className="flex flex-1 flex-col">
@@ -1636,7 +1649,7 @@ export default function Landing({
                             "bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90"
                         )}
                       >
-                        {plan.priceMonthly === 0 ? plan.cta : t.pricingChoose}
+                        {plan.price === 0 ? plan.cta : t.pricingChoose}
                       </Button>
                     </CardContent>
                   </Card>
