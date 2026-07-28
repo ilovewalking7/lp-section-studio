@@ -64,7 +64,7 @@ export default function CardRing3D() {
   const step = 360 / count;
 
   return (
-    <div className="flex w-full flex-col items-center gap-6 py-8">
+    <div className="flex w-full flex-col items-center gap-6 py-8 overflow-x-hidden">
       <div
         className="relative"
         style={{ width: 240, height: 200, perspective: "1200px" }}

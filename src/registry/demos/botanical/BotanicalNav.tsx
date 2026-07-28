@@ -74,6 +74,7 @@ export default function BotanicalNav() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label={en ? "Bag" : "バッグ"}
             className="rounded-full text-[#5e6b4f] hover:bg-[#5e6b4f]/10"
           >
             <ShoppingBag className="size-5" />

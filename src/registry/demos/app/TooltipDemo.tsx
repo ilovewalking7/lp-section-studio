@@ -59,10 +59,18 @@ function Tooltip({
   );
 }
 
-function IconButton({ children }: { children: React.ReactNode }) {
+/** アイコンだけのボタンなので、ツールチップと同じ文言を読み上げ用にも渡す */
+function IconButton({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
   return (
     <button
       type="button"
+      aria-label={label}
       className="flex h-10 w-10 items-center justify-center rounded-full border border-input bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_svg]:h-[18px] [&_svg]:w-[18px]"
     >
       {children}
@@ -78,17 +86,17 @@ export default function TooltipDemo() {
     <div className="flex w-full max-w-sm flex-col items-center gap-10 py-8">
       <div className="flex items-center gap-4">
         <Tooltip label={en ? "Like" : "いいね"} side="top">
-          <IconButton>
+          <IconButton label={en ? "Like" : "いいね"}>
             <Heart />
           </IconButton>
         </Tooltip>
         <Tooltip label={en ? "Save" : "保存する"} side="top">
-          <IconButton>
+          <IconButton label={en ? "Save" : "保存する"}>
             <Bookmark />
           </IconButton>
         </Tooltip>
         <Tooltip label={en ? "Share" : "共有"} side="top">
-          <IconButton>
+          <IconButton label={en ? "Share" : "共有"}>
             <Share2 />
           </IconButton>
         </Tooltip>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check } from "lucide-react";
 import type { DemoMeta } from "@/registry";
 
@@ -99,12 +99,19 @@ function Field({
   type: string;
   placeholder?: string;
 }) {
+  // label と input が id で結ばれていないと、読み上げでは
+  // 「編集テキスト」としか案内されず、何の欄か分からない
+  const id = useId();
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-[0.3em] text-stone-500">
+      <label
+        htmlFor={id}
+        className="text-[10px] uppercase tracking-[0.3em] text-stone-500"
+      >
         {label}
       </label>
       <input
+        id={id}
         type={type}
         placeholder={placeholder}
         className="mt-2 w-full border-b border-stone-700 bg-transparent pb-2 text-sm text-stone-100 outline-none transition-colors placeholder:text-stone-600 focus:border-amber-400/60 [color-scheme:dark]"

@@ -121,7 +121,7 @@ function Row({ data, reversed }: { data: (typeof ROWS)[number]; reversed: boolea
 
 export default function AlternatingRows() {
   return (
-    <section className="w-full px-6 py-16">
+    <section className="w-full overflow-x-hidden px-6 py-16">
       <div className="mx-auto max-w-5xl space-y-16">
         {ROWS.map((r, i) => (
           <Row key={r.title} data={r} reversed={i % 2 === 1} />

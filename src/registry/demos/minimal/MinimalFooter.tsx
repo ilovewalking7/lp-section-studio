@@ -38,6 +38,7 @@ export default function MinimalFooter() {
           {columns.map((col) => (
             <nav
               key={col.head}
+              aria-label={col.head}
               className="col-span-6 md:col-span-2 lg:col-span-2"
             >
               <div className="mb-4 text-[11px] uppercase tracking-[0.2em] text-neutral-400">

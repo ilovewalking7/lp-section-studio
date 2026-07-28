@@ -28,7 +28,7 @@ export default function CoverflowAlbumSwitcher() {
     setActive((a) => Math.min(ALBUMS.length - 1, Math.max(0, a + dir)));
 
   return (
-    <div className="w-full bg-background py-12">
+    <div className="w-full bg-background py-12 overflow-x-hidden">
       <div
         className="relative mx-auto flex h-72 max-w-3xl items-center justify-center"
         style={{ perspective: "1200px" }}
@@ -72,6 +72,7 @@ export default function CoverflowAlbumSwitcher() {
         <button
           onClick={() => move(-1)}
           disabled={active === 0}
+          aria-label="前のアルバム"
           className="rounded-full border border-border bg-card p-2 text-foreground transition hover:bg-muted disabled:opacity-30"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -90,6 +91,7 @@ export default function CoverflowAlbumSwitcher() {
         <button
           onClick={() => move(1)}
           disabled={active === ALBUMS.length - 1}
+          aria-label="次のアルバム"
           className="rounded-full border border-border bg-card p-2 text-foreground transition hover:bg-muted disabled:opacity-30"
         >
           <ChevronRight className="h-5 w-5" />

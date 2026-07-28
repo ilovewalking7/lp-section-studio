@@ -61,8 +61,18 @@ export default function FileUploadDropzone() {
           {drag ? (en ? "Drop here" : "ここにドロップ") : (en ? "Click or drag & drop" : "クリック または ドラッグ＆ドロップ")}
         </p>
         <p className="text-xs text-slate-400">{en ? "PNG, JPG, PDF (max 10MB)" : "PNG, JPG, PDF（最大10MB）"}</p>
-        <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => add(e.target.files)} />
       </div>
+
+      {/* 入力欄を役割 button の要素の中に置くと、対話要素が入れ子になって
+          キーボード操作の順序が壊れる。外に出し、名前も与える。 */}
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        aria-label={en ? "Choose files" : "ファイルを選択"}
+        className="hidden"
+        onChange={(e) => add(e.target.files)}
+      />
 
       {files.length > 0 && (
         <ul className="mt-4 space-y-2">

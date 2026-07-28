@@ -35,7 +35,7 @@ export default function SearchExpand() {
   }, [open]);
 
   return (
-    <div className="w-full bg-muted/30 p-6 sm:p-10">
+    <div className="w-full overflow-x-auto bg-muted/30 p-3 sm:p-10">
       <div className="mx-auto max-w-2xl">
         <nav className="flex items-center gap-3 rounded-xl border bg-background px-4 py-2.5 shadow-sm">
           <div className="flex shrink-0 items-center gap-2 font-semibold">

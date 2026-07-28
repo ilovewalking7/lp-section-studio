@@ -15,7 +15,9 @@ export default function MemphisCard() {
     typeof document !== "undefined" &&
     document.documentElement.lang === "en";
   return (
-    <div className="relative w-full max-w-sm">
+    <div className="w-full px-6">
+      {/* 装飾が箱の外に出る設計なので、はみ出すぶんの余白を外側に確保する */}
+      <div className="relative w-full max-w-sm">
       {/* 外側に飛び出す装飾シェイプ */}
       <div className="pointer-events-none absolute -left-4 -top-4 z-10 h-12 w-12 rotate-12 rounded-[30%] border-[4px] border-black bg-[#ffd23f]" />
       <div className="pointer-events-none absolute -right-5 top-1/3 z-10 h-9 w-9 rounded-full border-[4px] border-black bg-[#1fb6c1]" />
@@ -51,6 +53,7 @@ export default function MemphisCard() {
             <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

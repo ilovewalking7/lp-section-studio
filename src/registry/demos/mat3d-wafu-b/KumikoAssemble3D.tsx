@@ -80,7 +80,7 @@ export default function KumikoAssemble3D() {
     typeof document !== "undefined" && document.documentElement.lang === "en";
 
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-8 rounded-3xl bg-[radial-gradient(120%_120%_at_50%_12%,#241a10_0%,#0e0905_72%)] py-16">
+    <div className="flex w-full flex-col items-center justify-center gap-8 rounded-3xl bg-[radial-gradient(120%_120%_at_50%_12%,#241a10_0%,#0e0905_72%)] py-16 overflow-x-hidden">
       <style>{`
         @keyframes kma-spin { to { transform: rotateX(58deg) rotateZ(360deg); } }
         @keyframes kma-build {

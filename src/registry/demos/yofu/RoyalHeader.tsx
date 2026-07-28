@@ -22,7 +22,10 @@ export default function RoyalHeader() {
       </div>
 
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <nav className="hidden flex-1 items-center gap-7 text-[11px] uppercase tracking-[0.22em] text-[#f3ede1]/80 lg:flex">
+        <nav
+          aria-label="メイン（左）"
+          className="hidden flex-1 items-center gap-7 text-[11px] uppercase tracking-[0.22em] text-[#f3ede1]/80 lg:flex"
+        >
           {left.map((item) => (
             <a key={item} href="#" className="transition-colors hover:text-amber-300">
               {item}
@@ -42,7 +45,10 @@ export default function RoyalHeader() {
           </span>
         </div>
 
-        <nav className="hidden flex-1 items-center justify-end gap-7 text-[11px] uppercase tracking-[0.22em] text-[#f3ede1]/80 lg:flex">
+        <nav
+          aria-label="メイン（右）"
+          className="hidden flex-1 items-center justify-end gap-7 text-[11px] uppercase tracking-[0.22em] text-[#f3ede1]/80 lg:flex"
+        >
           {right.map((item) => (
             <a key={item} href="#" className="transition-colors hover:text-amber-300">
               {item}

@@ -32,7 +32,10 @@ export default function MinimalNav() {
             Atelier<span className="text-[#e5341a]">.</span>
           </a>
 
-          <nav className="hidden items-center gap-10 md:flex">
+          <nav
+            aria-label={en ? "Main" : "メイン"}
+            className="hidden items-center gap-10 md:flex"
+          >
             {links.map((l) => (
               <a
                 key={l}
@@ -72,6 +75,7 @@ export default function MinimalNav() {
         </div>
 
         <nav
+          aria-label={en ? "Mobile" : "モバイル"}
           className={cn(
             "overflow-hidden border-t border-neutral-200 md:hidden",
             open ? "max-h-80" : "max-h-0 border-t-0"

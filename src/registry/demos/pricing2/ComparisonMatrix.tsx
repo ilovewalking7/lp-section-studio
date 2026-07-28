@@ -59,7 +59,7 @@ export default function ComparisonMatrix() {
         <table className="w-full min-w-[560px] border-collapse text-sm">
           <thead>
             <tr>
-              <th className="p-5 text-left" />
+              <td className="p-5 text-left" />
               {cols.map((c, i) => (
                 <th
                   key={c.ja}

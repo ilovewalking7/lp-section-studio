@@ -98,17 +98,13 @@ export default function DecoyPricing() {
         {PLANS.map((p) => {
           const active = selected === p.id;
           return (
+            // カード自体に role="button" を付けると、中の選択ボタンと
+            // 対話要素が入れ子になりキーボードの順序が壊れる。
+            // 操作の役割は中のボタンに一本化し、カードのクリックは
+            // マウス利用者向けの補助に留める。
             <Card
               key={p.id}
-              role="button"
-              tabIndex={0}
               onClick={() => setSelected(p.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setSelected(p.id);
-                }
-              }}
               className={cn(
                 "relative flex cursor-pointer flex-col transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active && "ring-2 ring-primary",
@@ -160,6 +156,8 @@ export default function DecoyPricing() {
                 </ul>
                 <Button
                   variant={active ? "default" : "outline"}
+                  onClick={() => setSelected(p.id)}
+                  aria-pressed={active}
                   className="w-full"
                 >
                   {active ? (

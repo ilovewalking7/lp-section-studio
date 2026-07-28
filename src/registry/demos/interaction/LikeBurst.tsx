@@ -73,6 +73,7 @@ export default function LikeBurst() {
           type="button"
           onClick={onClick}
           aria-pressed={liked}
+          aria-label={en ? "Like" : "いいね"}
           className={cn(
             "relative flex size-16 items-center justify-center rounded-full border bg-card shadow-sm transition-all duration-200 active:scale-90",
             liked

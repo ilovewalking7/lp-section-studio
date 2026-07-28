@@ -26,7 +26,7 @@ export default function TicketStack3D() {
   const [active, setActive] = useState(0);
 
   return (
-    <div className="w-full bg-background py-12">
+    <div className="w-full bg-background py-12 overflow-x-hidden">
       <div
         className="relative mx-auto flex h-64 max-w-md items-center justify-center"
         style={{ perspective: "1100px" }}

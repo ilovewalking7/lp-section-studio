@@ -15,7 +15,9 @@ export default function MemphisTestimonial() {
     typeof document !== "undefined" &&
     document.documentElement.lang === "en";
   return (
-    <div className="relative w-full max-w-lg">
+    <div className="w-full px-6">
+      {/* 装飾が箱の外に出る設計なので、はみ出すぶんの余白を外側に確保する */}
+      <div className="relative w-full max-w-lg">
       <div className="pointer-events-none absolute -left-4 -top-5 z-10 flex size-14 items-center justify-center rotate-[-8deg] rounded-2xl border-[3px] border-black bg-[#ffd23f] shadow-[3px_3px_0_0_#000]">
         <Quote className="size-7 text-black" strokeWidth={2.5} />
       </div>
@@ -78,6 +80,7 @@ export default function MemphisTestimonial() {
           </div>
         </figcaption>
       </figure>
+      </div>
     </div>
   );
 }

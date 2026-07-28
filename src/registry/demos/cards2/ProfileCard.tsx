@@ -70,10 +70,15 @@ export default function ProfileCard() {
             {en ? "Frontend Engineer" : "フロントエンドエンジニア"}
           </p>
           <div className="mt-5 flex justify-center gap-3">
-            {[Github, Twitter, Globe].map((Icon, i) => (
+            {[
+              { Icon: Github, label: "GitHub" },
+              { Icon: Twitter, label: "X (Twitter)" },
+              { Icon: Globe, label: en ? "Website" : "ウェブサイト" },
+            ].map(({ Icon, label }) => (
               <a
-                key={i}
+                key={label}
                 href="#"
+                aria-label={label}
                 className="flex size-9 items-center justify-center rounded-lg bg-white/5 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <Icon className="size-4" />

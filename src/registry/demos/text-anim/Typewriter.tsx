@@ -64,9 +64,15 @@ export default function Typewriter() {
       <span className="text-xs font-medium uppercase tracking-[0.3em] text-muted-foreground">
         Component Studio
       </span>
-      <h2 className="min-h-[1.4em] text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
-        {text}
-        <span className="ml-0.5 inline-block w-[3px] -translate-y-1 animate-[tw-caret_1s_steps(1)_infinite] bg-foreground align-middle">
+      <h2
+        aria-label={PHRASES[phraseIndex]}
+        className="min-h-[1.4em] text-3xl font-bold tracking-tight text-foreground sm:text-5xl"
+      >
+        <span aria-hidden="true">{text}</span>
+        <span
+          aria-hidden="true"
+          className="ml-0.5 inline-block w-[3px] -translate-y-1 animate-[tw-caret_1s_steps(1)_infinite] bg-foreground align-middle"
+        >
           &nbsp;
         </span>
       </h2>

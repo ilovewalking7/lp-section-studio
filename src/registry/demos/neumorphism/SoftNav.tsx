@@ -29,7 +29,7 @@ export default function SoftNav() {
     document.documentElement.lang === "en";
 
   return (
-    <div className="w-full rounded-3xl bg-[#e0e5ec] p-5 text-slate-600">
+    <div className="w-full overflow-x-auto rounded-3xl bg-[#e0e5ec] p-3 text-slate-600 sm:p-5">
       <nav className={cn("flex items-center justify-between gap-4 rounded-2xl bg-[#e0e5ec] p-3", RAISED)}>
         <div className="flex items-center gap-2 pl-2">
           <span className={cn("grid size-9 place-items-center rounded-xl bg-[#e0e5ec] text-indigo-500", RAISED)}>

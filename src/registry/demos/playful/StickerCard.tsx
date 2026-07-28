@@ -30,7 +30,9 @@ export default function StickerCard() {
     typeof document !== "undefined" &&
     document.documentElement.lang === "en";
   return (
-    <div className="font-rounded relative w-full max-w-sm">
+    <div className="w-full px-6">
+      {/* 装飾が箱の外に出る設計なので、はみ出すぶんの余白を外側に確保する */}
+      <div className="font-rounded relative w-full max-w-sm">
       {/* stickers */}
       <StarSticker color="#ffd166" className="absolute -left-5 -top-5 size-16 rotate-[-12deg] drop-shadow" />
       <span
@@ -88,6 +90,7 @@ export default function StickerCard() {
             {en ? "Get it" : "ゲット"}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

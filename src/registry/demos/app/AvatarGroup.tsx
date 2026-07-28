@@ -66,6 +66,7 @@ function Avatar({
       </span>
       {showStatus && person.online && (
         <span
+          role="img"
           className={cn(
             "absolute bottom-0 right-0 rounded-full bg-emerald-500 ring-2 ring-background",
             s.dot

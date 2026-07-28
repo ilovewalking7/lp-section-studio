@@ -90,6 +90,7 @@ function PressButton({ toggle, en }: { toggle: Toggle; en: boolean }) {
         type="button"
         onClick={handleClick}
         aria-pressed={on}
+        aria-label={en ? "Toggle" : "オン・オフ"}
         className="press-btn relative grid h-20 w-20 place-items-center overflow-hidden rounded-[26px] outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         style={{
           background: on ? toggle.hue : "linear-gradient(165deg, #232b42 0%, #161c2e 100%)",

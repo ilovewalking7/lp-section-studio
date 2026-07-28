@@ -15,7 +15,9 @@ export default function MemphisButtonSet() {
     typeof document !== "undefined" &&
     document.documentElement.lang === "en";
   return (
-    <div className="relative w-full max-w-md rounded-2xl border-[3px] border-black bg-[#fdf6e3] p-8 shadow-[7px_7px_0_0_#000]">
+    <div className="flex w-full justify-center px-5">
+      {/* 角の装飾と影が箱の外に出るので、そのぶんの余白を外側に確保する */}
+      <div className="relative w-full max-w-md rounded-2xl border-[3px] border-black bg-[#fdf6e3] p-8 shadow-[7px_7px_0_0_#000]">
       <div className="pointer-events-none absolute -right-3 -top-3 h-9 w-9 rotate-12 rounded-[30%] border-[3px] border-black bg-[#ffd23f]" />
 
       {/* ソリッドボタン */}
@@ -67,6 +69,7 @@ export default function MemphisButtonSet() {
             style={{ clipPath: "polygon(50% 0, 100% 100%, 0 100%)" }}
             aria-hidden
           />
+        </div>
         </div>
       </div>
     </div>
