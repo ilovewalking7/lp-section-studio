@@ -1,5 +1,4 @@
 import { Suspense, lazy, useEffect, useState } from "react";
-import { LangToggle } from "@/components/LangToggle";
 import Landing from "@/pages/Landing";
 import Pricing from "@/pages/Pricing";
 import { getStats } from "@/lib/stats";
@@ -87,6 +86,7 @@ export default function App({ ssrRoute }: { ssrRoute?: Route } = {}) {
       <Pricing
         currentPlan={plan}
         lang={lang}
+        setLang={setLang}
         onChoosePlan={setPlan}
         onOpenStudio={() => go("studio")}
       />
@@ -94,22 +94,12 @@ export default function App({ ssrRoute }: { ssrRoute?: Route } = {}) {
       <Landing
         stats={stats}
         lang={lang}
+        setLang={setLang}
         onOpenStudio={() => go("studio")}
         onOpenPricing={() => go("pricing")}
       />
     );
 
-  return (
-    <>
-      {page}
-      {/* スタジオはヘッダー内に言語切替を持つ。料金は右上に固定表示。 */}
-      {route !== "studio" && (
-        <LangToggle
-          lang={lang}
-          setLang={setLang}
-          className="fixed right-3 top-3 z-50 shadow-lg"
-        />
-      )}
-    </>
-  );
+  // 言語切替は各画面のヘッダー内に置く（固定配置だと CTA に重なるため）
+  return page;
 }

@@ -27,6 +27,7 @@ import {
   ListChecks,
   Loader,
   MessageSquare,
+  MoreHorizontal,
   MousePointerClick,
   MoveVertical,
   Navigation,
@@ -61,6 +62,7 @@ import { registry, categories } from "@/registry";
 import { tCategory, tName } from "@/registry/i18n";
 import { THEME_CATEGORIES } from "@/lib/stats";
 import { isFreeComponent } from "@/lib/free";
+import { variantLabel } from "@/lib/variant";
 import { FREE_EDITION_COUNT } from "@/registry/freeCount";
 import { type PlanId } from "@/lib/plan";
 import { type Lang } from "@/lib/i18n";
@@ -130,6 +132,7 @@ function useFavorites() {
 // スタジオのUI文言（ナビ・ラベル）の二言語辞書
 const STUDIO_COPY = {
   ja: {
+    brandShort: "LP Studio",
     subtitle: "ランディングページが完成する部品ライブラリ",
     viewPlan: "プランを見る",
     detail: "詳細",
@@ -137,9 +140,12 @@ const STUDIO_COPY = {
     home: "ホーム",
     pricing: "料金",
     repo: "リポジトリ",
+    menu: "メニュー",
     searchPlaceholder: "検索（名前・タグ）...",
     favorites: "お気に入り",
-    items: "件",
+    // 「お気に入りが880件」と誤読されないよう、何の件数かを明示する
+    shown: (n: number) => `表示中 ${n} 件`,
+    collection: "コレクション",
     noResults: "該当なし",
     all: "すべて",
     back: "一覧に戻る",
@@ -158,6 +164,7 @@ const STUDIO_COPY = {
     empty: "コンポーネントがありません",
   },
   en: {
+    brandShort: "LP Studio",
     subtitle: "The section library that finishes your landing page",
     viewPlan: "View plans",
     detail: "Detail",
@@ -165,9 +172,11 @@ const STUDIO_COPY = {
     home: "Home",
     pricing: "Pricing",
     repo: "Repo",
+    menu: "Menu",
     searchPlaceholder: "Search (name, tag)…",
     favorites: "Favorites",
-    items: "items",
+    shown: (n: number) => `${n} shown`,
+    collection: "Collection",
     noResults: "No results",
     all: "All",
     back: "Back to list",
@@ -186,6 +195,92 @@ const STUDIO_COPY = {
     empty: "No components",
   },
 } as const;
+
+/**
+ * 狭い画面でヘッダーに収まらない導線（ホーム・料金・リポジトリ）を畳むメニュー。
+ * md 以上ではヘッダーに直接並ぶので、こちらは非表示になる。
+ */
+function OverflowMenu({
+  label,
+  items,
+}: {
+  label: string;
+  items: {
+    key: string;
+    icon: typeof Home;
+    label: string;
+    onSelect?: () => void;
+    href?: string;
+  }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const itemClass =
+    "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  return (
+    <div ref={ref} className="relative md:hidden">
+      <Button
+        size="icon"
+        variant="ghost"
+        className="size-8"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <MoreHorizontal />
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1 min-w-44 rounded-lg border bg-background p-1 shadow-lg">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return item.href ? (
+              <a
+                key={item.key}
+                href={item.href}
+                target="_blank"
+                rel="noreferrer"
+                className={itemClass}
+                onClick={() => setOpen(false)}
+              >
+                <Icon className="size-4" /> {item.label}
+              </a>
+            ) : (
+              <button
+                key={item.key}
+                type="button"
+                className={itemClass}
+                onClick={() => {
+                  setOpen(false);
+                  item.onSelect?.();
+                }}
+              >
+                <Icon className="size-4" /> {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
@@ -276,7 +371,7 @@ export default function Studio({
   // 件数表示（無料版で絞り込み中は「無料100個のうち n 件」）
   const countLabel = onlyFree
     ? s.freeOf(filtered.length)
-    : `${filtered.length} ${s.items}`;
+    : s.shown(filtered.length);
 
   const active =
     registry.find((e) => e.id === activeId) ?? filtered[0] ?? registry[0];
@@ -317,55 +412,68 @@ export default function Studio({
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <div className="flex items-center gap-2 font-semibold">
-            <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        {/* 狭い画面でも1行に収める: ブランドは縮み、ラベルはアイコンに畳み、
+            はみ出す導線は「…」メニューへ入れる（375px で横スクロールしない） */}
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2 font-semibold">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Boxes className="size-4" />
             </div>
-            <div className="leading-tight">
-              <div>LP Section Studio</div>
-              <div className="hidden text-[10px] font-normal text-muted-foreground sm:block">
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-sm sm:text-base">
+                <span className="sm:hidden">{s.brandShort}</span>
+                <span className="hidden sm:inline">LP Section Studio</span>
+              </div>
+              <div className="hidden truncate text-[10px] font-normal text-muted-foreground sm:block">
                 {s.subtitle}
               </div>
             </div>
           </div>
-          <Badge variant="secondary" className="hidden sm:inline-flex">
+          <Badge variant="secondary" className="hidden lg:inline-flex">
             {registry.length} sections
           </Badge>
           <button
             onClick={onPricing}
             className={cn(
-              "hidden rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide sm:inline-flex",
+              "hidden rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide lg:inline-flex",
               plan === "free"
-                ? "bg-muted text-muted-foreground"
+                ? "bg-muted text-foreground/70"
                 : "bg-violet-500/15 text-violet-500"
             )}
             title={s.viewPlan}
           >
             {plan}
           </button>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <div className="flex rounded-md border p-0.5">
               <Button
                 size="sm"
                 variant={view === "gallery" ? "secondary" : "ghost"}
                 onClick={() => setView("gallery")}
+                aria-label={s.gallery}
+                title={s.gallery}
+                className="px-2 md:px-3"
               >
-                <LayoutGrid /> {s.gallery}
+                <LayoutGrid />
+                <span className="hidden md:inline">{s.gallery}</span>
               </Button>
               <Button
                 size="sm"
                 variant={view === "detail" ? "secondary" : "ghost"}
                 onClick={() => setView("detail")}
+                aria-label={s.detail}
+                title={s.detail}
+                className="px-2 md:px-3"
               >
-                <PanelsTopLeft /> {s.detail}
+                <PanelsTopLeft />
+                <span className="hidden md:inline">{s.detail}</span>
               </Button>
             </div>
             <Button
               size="sm"
               variant="ghost"
               onClick={onHome}
-              className="hidden sm:flex"
+              className="hidden md:flex"
             >
               <Home /> {s.home}
             </Button>
@@ -373,7 +481,7 @@ export default function Studio({
               size="sm"
               variant="ghost"
               onClick={onPricing}
-              className="hidden sm:flex"
+              className="hidden md:flex"
             >
               <Tag /> {s.pricing}
             </Button>
@@ -387,6 +495,24 @@ export default function Studio({
             </a>
             <LangToggle lang={lang} setLang={setLang} />
             <ThemeToggle />
+            <OverflowMenu
+              label={s.menu}
+              items={[
+                { key: "home", icon: Home, label: s.home, onSelect: onHome },
+                {
+                  key: "pricing",
+                  icon: Tag,
+                  label: s.pricing,
+                  onSelect: onPricing,
+                },
+                {
+                  key: "repo",
+                  icon: Github,
+                  label: s.repo,
+                  href: "https://github.com/ilovewalking7/app-035",
+                },
+              ]}
+            />
           </div>
         </div>
       </header>
@@ -435,50 +561,69 @@ export default function Studio({
                       {tCategory(lang, cat)}
                     </div>
                     <ul className="space-y-0.5">
-                      {items.map((e) => (
-                        <li key={e.id}>
-                          <div
-                            className={cn(
-                              "group flex items-center rounded-md transition-colors",
-                              view === "detail" && active?.id === e.id
-                                ? "bg-accent text-accent-foreground"
-                                : "hover:bg-accent/50"
-                            )}
-                          >
-                            <button
-                              onClick={() => select(e.id)}
+                      {items.map((e) => {
+                        // 同名が他にもある時だけ、どちらのものか分かるよう
+                        // コレクション名（demos 配下のフォルダ）を添える
+                        const variant = variantLabel(e);
+                        return (
+                          <li key={e.id}>
+                            <div
                               className={cn(
-                                "flex-1 truncate px-2 py-1.5 text-left text-sm",
+                                "group flex items-center rounded-md transition-colors",
                                 view === "detail" && active?.id === e.id
-                                  ? "font-medium"
-                                  : "text-muted-foreground group-hover:text-foreground"
+                                  ? "bg-accent text-accent-foreground"
+                                  : "hover:bg-accent/50"
                               )}
                             >
-                              {tName(lang, e.id, e.name)}
-                              {e.level === "advanced" && (
-                                <span className="ml-1.5 text-[10px] text-violet-500">
-                                  ★
-                                </span>
-                              )}
-                            </button>
-                            <button
-                              aria-label="お気に入り"
-                              onClick={() => toggle(e.id)}
-                              className="px-2 opacity-0 transition-opacity group-hover:opacity-100 aria-pressed:opacity-100"
-                              aria-pressed={favs.includes(e.id)}
-                            >
-                              <Star
+                              <button
+                                onClick={() => select(e.id)}
                                 className={cn(
-                                  "size-3.5",
-                                  favs.includes(e.id)
-                                    ? "fill-amber-400 text-amber-400 opacity-100"
-                                    : "text-muted-foreground"
+                                  "flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-left text-sm",
+                                  view === "detail" && active?.id === e.id
+                                    ? "font-medium"
+                                    : "text-muted-foreground group-hover:text-foreground"
                                 )}
-                              />
-                            </button>
-                          </div>
-                        </li>
-                      ))}
+                              >
+                                {/* 名前は省略されても、区別用の印は必ず残す */}
+                                <span className="truncate">
+                                  {tName(lang, e.id, e.name)}
+                                </span>
+                                {e.level === "advanced" && (
+                                  <span className="shrink-0 text-[10px] text-violet-500">
+                                    ★
+                                  </span>
+                                )}
+                                {variant && (
+                                  <span
+                                    className="shrink-0 rounded bg-muted px-1 font-mono text-[10px] text-foreground/70"
+                                    title={`${s.collection}: ${variant} · ${e.id}`}
+                                  >
+                                    <span className="sr-only">
+                                      {s.collection}{" "}
+                                    </span>
+                                    {variant}
+                                  </span>
+                                )}
+                              </button>
+                              <button
+                                aria-label="お気に入り"
+                                onClick={() => toggle(e.id)}
+                                className="px-2 opacity-0 transition-opacity group-hover:opacity-100 aria-pressed:opacity-100"
+                                aria-pressed={favs.includes(e.id)}
+                              >
+                                <Star
+                                  className={cn(
+                                    "size-3.5",
+                                    favs.includes(e.id)
+                                      ? "fill-amber-400 text-amber-400 opacity-100"
+                                      : "text-muted-foreground"
+                                  )}
+                                />
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 );
@@ -494,7 +639,8 @@ export default function Studio({
 
         <main ref={mainRef} className="min-w-0 flex-1 scroll-mt-20">
           {/* 数字で訴求するバンド（LP部品ライブラリの規模感） */}
-          <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border bg-gradient-to-r from-violet-500/5 via-transparent to-transparent p-4">
+          {/* 狭い画面では2×2に並べる（折り返しで最後の1つだけ余るのを防ぐ） */}
+          <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border bg-gradient-to-r from-violet-500/5 via-transparent to-transparent p-4 sm:flex sm:flex-wrap sm:items-center sm:gap-y-2">
             <Stat value={`${registry.length}+`} label={s.statSections} />
             <Stat value={`${styleCount}`} label={s.statStyles} />
             <Stat value={`${categories.length}`} label={s.statCategories} />

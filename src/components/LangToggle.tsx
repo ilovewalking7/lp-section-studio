@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LANGS, type Lang } from "@/lib/i18n";
 
-/** 言語切替トグル（JA / EN）。LP・料金では右上固定、スタジオではヘッダー内に置く。 */
+/** 言語切替トグル（JA / EN）。各画面のヘッダー内に置く（重なりを避けるため固定配置はしない）。 */
 export function LangToggle({
   lang,
   setLang,
@@ -14,7 +14,7 @@ export function LangToggle({
   return (
     <div
       className={cn(
-        "flex rounded-full border bg-background/90 p-0.5 backdrop-blur",
+        "flex shrink-0 rounded-full border bg-background/90 p-0.5 backdrop-blur",
         className
       )}
     >
@@ -24,7 +24,8 @@ export function LangToggle({
           onClick={() => setLang(l.id)}
           aria-pressed={lang === l.id}
           className={cn(
-            "rounded-full px-2.5 py-1 text-xs font-semibold transition-colors",
+            // 狭い画面ではヘッダーの他要素と競合するので一段小さくする
+            "rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors sm:px-2.5 sm:py-1 sm:text-xs",
             lang === l.id
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground"

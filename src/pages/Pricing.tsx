@@ -17,6 +17,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LangToggle } from "@/components/LangToggle";
+import { Phrased } from "@/components/Phrased";
 import { getPlans, getComparison, type PlanId } from "@/lib/plan";
 import type { Lang } from "@/lib/i18n";
 
@@ -52,9 +54,9 @@ const COPY: { ja: Copy; en: Copy } = {
   ja: {
     back: "スタジオに戻る",
     badgeSections: "880 コンポーネント",
-    title: "買い切り。月額はありません。",
+    title: "買い切り。|月額はありません。",
     subcopy:
-      "一度払えば終わりです。追加も更新も無料で、解約というものがありません。",
+      "一度払えば終わりです。|追加も更新も無料で、|解約というものがありません。",
     free: "¥0",
     oneTime: "買い切り",
     usdNote: (u) => `およそ $${u}`,
@@ -68,7 +70,7 @@ const COPY: { ja: Copy; en: Copy } = {
     noAria: "なし",
     compareTitle: "無料版と買い切り版の違い",
     compareSubtitle:
-      "無料版でも 880 個すべてをブラウザで見られます。違うのは「取り出せる数」です。",
+      "無料版でも 880 個すべてを|ブラウザで見られます。|違うのは「取り出せる数」です。",
     featureCol: "項目",
     faqTitle: "よくある質問",
     faq: [
@@ -99,7 +101,7 @@ const COPY: { ja: Copy; en: Copy } = {
     ],
     ctaTitle: "まず無料の MCP から。",
     ctaSubcopy:
-      "100 個をそのまま使えます。すべて React 不要のものなので、違いはすぐ分かります。",
+      "100 個をそのまま使えます。|すべて React 不要のものなので、|違いはすぐ分かります。",
     ctaButton: "スタジオを開く",
   },
   en: {
@@ -182,11 +184,14 @@ function CompareCell({
 export default function Pricing({
   currentPlan,
   lang = "ja",
+  setLang,
   onChoosePlan,
   onOpenStudio,
 }: {
   currentPlan: PlanId;
   lang?: Lang;
+  /** 渡されたときだけヘッダーに言語切替を出す（テスト等の簡易利用では省略可） */
+  setLang?: (l: Lang) => void;
   onChoosePlan: (p: PlanId) => void;
   onOpenStudio: () => void;
 }) {
@@ -202,8 +207,8 @@ export default function Pricing({
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_0%,theme(colors.violet.500/0.14),transparent_70%)]"
         />
-        <div className="relative mx-auto max-w-6xl px-6 pb-16 pt-10">
-          <div className="mb-10 flex items-center justify-between">
+        <div className="relative mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6 sm:pb-16 sm:pt-10">
+          <div className="mb-8 flex items-center justify-between gap-2 sm:mb-10">
             <Button
               variant="ghost"
               size="sm"
@@ -213,26 +218,32 @@ export default function Pricing({
               <ArrowLeft className="mr-1.5 h-4 w-4" />
               {t.back}
             </Button>
-            <Badge
-              variant="secondary"
-              className="gap-1.5 border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-300"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              {t.badgeSections}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="secondary"
+                className="hidden gap-1.5 border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-300 sm:inline-flex"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {t.badgeSections}
+              </Badge>
+              {/* 言語切替はヘッダー内に置く（固定配置だと他の要素に重なる） */}
+              {setLang && <LangToggle lang={lang} setLang={setLang} />}
+            </div>
           </div>
 
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-              {t.title}
+              <Phrased text={t.title} />
             </h1>
-            <p className="mt-4 text-lg text-muted-foreground">{t.subcopy}</p>
+            <p className="mt-4 text-lg text-muted-foreground">
+              <Phrased text={t.subcopy} />
+            </p>
           </div>
         </div>
       </header>
 
       {/* Pricing cards */}
-      <section className="mx-auto max-w-4xl px-6 py-14">
+      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="grid items-start gap-6 md:grid-cols-2">
           {plans.map((plan) => {
             const isFree = plan.id === "free";
@@ -301,9 +312,12 @@ export default function Pricing({
 
                 <CardFooter>
                   {isCurrent ? (
-                    <Button disabled className="w-full" variant="secondary">
+                    // 「利用中」は押せない状態ではなく状態表示。無効ボタン
+                    // （opacity-50）だとライトテーマで読みにくいので静的な印にする
+                    <p className="flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-medium text-primary">
+                      <Check className="h-4 w-4" aria-hidden />
                       {t.currentPlan}
-                    </Button>
+                    </p>
                   ) : (
                     <Button
                       className="w-full"
@@ -334,7 +348,7 @@ export default function Pricing({
             {t.compareTitle}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {t.compareSubtitle}
+            <Phrased text={t.compareSubtitle} />
           </p>
         </div>
 
@@ -418,9 +432,11 @@ export default function Pricing({
       {/* Bottom CTA band */}
       <section className="border-t bg-muted/30">
         <div className="mx-auto max-w-4xl px-6 py-16 text-center">
-          <h2 className="text-3xl font-bold tracking-tight">{t.ctaTitle}</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            <Phrased text={t.ctaTitle} />
+          </h2>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            {t.ctaSubcopy}
+            <Phrased text={t.ctaSubcopy} />
           </p>
           <div className="mt-8">
             <Button size="lg" onClick={onOpenStudio} className="gap-2">

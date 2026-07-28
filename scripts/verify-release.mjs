@@ -190,11 +190,13 @@ if (simCss) {
   // セマンティックトークン（bg-card など）を使うものにする。埋め込んだ
   // Tailwind 設定が効いているかは、それを使う HTML でしか確かめられない。
   const standalone = htmlIndex.items.filter((i) => i.standalone);
-  // <head> に埋めた設定の中にもトークン名が出てくるので、<body> だけを見る
+  // <head> に埋めた設定の中にもトークン名が出てくるので、<body> だけを見る。
+  // 対象は下の SAMPLE_MEASURE が DOM から拾えるクラスに合わせてある
+  // （拾えないクラスを選んでしまうと、色を実測できず検査にならない）。
   const usesToken = (id) => {
     const html = readFileSync(join(PKG, "html", `${id}.html`), "utf-8");
     const body = html.slice(html.indexOf("<body"));
-    return /(?:^|[\s"])(?:bg|text|border|ring|from|to|via|hover:bg|dark:bg)-(?:card|primary|muted|muted-foreground|background|foreground|accent|secondary|destructive|border|input)(?:[\s"/]|$)/.test(
+    return /(?:^|[\s"])(?:bg-(?:card|primary|muted|background)|text-(?:muted-foreground|card-foreground|foreground|primary))(?:[\s"]|$)/.test(
       body
     );
   };
@@ -211,7 +213,10 @@ if (simCss) {
   const SAMPLE_MEASURE = `(() => {
     const cs = (el) => (el ? getComputedStyle(el) : null);
     const q = (sel) => document.querySelector(sel);
-    const tokenEl = q('[class*="bg-card"], [class*="bg-primary"], [class*="bg-muted"], [class*="bg-background"]');
+    // 背景トークンが無ければ文字色トークンを見る（どちらも素の Tailwind には無い）
+    const bgEl = q('[class*="bg-card"], [class*="bg-primary"], [class*="bg-muted"], [class*="bg-background"]');
+    const fgEl = q('[class*="text-muted-foreground"], [class*="text-card-foreground"], [class*="text-foreground"], [class*="text-primary"]');
+    const tokenEl = bgEl ?? fgEl;
     const styled = [...document.body.querySelectorAll("*")].filter((el) => {
       const s = getComputedStyle(el);
       return s.backgroundColor !== "rgba(0, 0, 0, 0)" || s.borderTopWidth !== "0px" || s.padding !== "0px";
@@ -223,8 +228,13 @@ if (simCss) {
       height: document.body.scrollHeight,
       width: document.documentElement.scrollWidth,
       rootVar: getComputedStyle(document.documentElement).getPropertyValue("--card").trim(),
-      tokenClass: tokenEl ? [...tokenEl.classList].find((c) => /^bg-(card|primary|muted|background)$/.test(c)) : null,
-      tokenBg: tokenEl ? cs(tokenEl).backgroundColor : null,
+      tokenClass: tokenEl
+        ? [...tokenEl.classList].find((c) =>
+            /^(bg-(card|primary|muted|background)|text-(muted-foreground|card-foreground|foreground|primary))$/.test(c)
+          )
+        : null,
+      // 背景トークンなら背景色を、文字色トークンなら文字色を測る
+      tokenBg: tokenEl ? (bgEl ? cs(tokenEl).backgroundColor : cs(tokenEl).color) : null,
       fontSize: cs(q("h1, h2, h3, p, span, div")).fontSize,
     };
   })()`;
@@ -241,6 +251,13 @@ if (simCss) {
       );
       await page.goto(`file://${join(PKG, "html", `${item.id}.html`)}`, { waitUntil: "load" });
       if (withCss) await page.addStyleTag({ content: simCss });
+      // CSS を後から差し込むと transition-colors 等が走り出し、getComputedStyle が
+      // 補間中の値（背景が rgba(255,255,255,0.17) など）を返して測定が揺れる。
+      // 測る前にアニメーションを止めて確定値にする。
+      await page.addStyleTag({
+        content: "*, *::before, *::after { transition: none !important; animation: none !important; }",
+      });
+      await page.waitForTimeout(120);
       const m = await page.evaluate(SAMPLE_MEASURE);
       await page.close();
       return m;
@@ -258,7 +275,9 @@ if (simCss) {
     const unstyled = m.styled <= bare.styled && m.height === bare.height;
     // 埋め込んだトークン定義が届いているか（--card が空なら <style> が効いていない）
     const tokensMissing = m.rootVar === "";
-    const tokenBroken = m.tokenClass !== null && m.tokenBg === "rgba(0, 0, 0, 0)";
+    // トークンが解決したか。素の状態（Tailwind 無し）と同じ色のままなら、
+    // そのクラスは何も効いていない＝定義が届いていない。
+    const tokenBroken = m.tokenClass !== null && m.tokenBg === bare.tokenBg;
     check(!blank && !unstyled && !tokensMissing && !tokenBroken, item.id, detail);
   }
 }

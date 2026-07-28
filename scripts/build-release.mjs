@@ -38,7 +38,6 @@ import {
 } from "node:fs";
 import { join, resolve, dirname, relative } from "node:path";
 import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const arg = (name, fallback) => {
@@ -70,90 +69,31 @@ if (missing.length > 0) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 静的HTML への Tailwind 設定の注入
+// デザイントークンが HTML に入っているかの確認
 //
-// 生成された静的HTML は cdn.tailwindcss.com を1行読むだけになっているが、
 // bg-card / text-muted-foreground のような**このプロジェクト固有のトークン**は
-// 素の Tailwind には存在しない。実測したところ 880 件中 430 件がこれらを使って
-// おり、そのままではその分の色が一切当たらない（bg-card → transparent）。
+// 素の Tailwind には存在しない（880 件中 430 件が使っている）。そのため
+// cdn.tailwindcss.com を1行読むだけの HTML では色が一切当たらない。
 //
-// そこで配布時に、tailwind.config.js の extend と src/index.css の :root/.dark を
-// HTML の <head> に埋め込む。Play CDN が公式に用意している設定方法で、
-// 「Tailwind を1行読むだけ」という売り文句を保ったまま色が正しく出る。
+// この注入は書き出しの**源流**（src/lib/vanilla.ts の wrapDocument。設定は
+// scripts/build-vanilla-head.mjs が生成する src/lib/vanillaHead.generated.ts）で
+// 行うので、ここで配布時に足すことはしない。同じ内容を2箇所に持つと、
+// 片方だけ直したときに配布物とスタジオの書き出しが食い違うため。
 //
-// 値は tailwind.config.js と src/index.css から毎回読み直すので、
-// トークンを直したら再生成するだけで配布物にも反映される。
+// 代わりに「入っているか」だけを検める。入っていなければ材料が古い。
 // ──────────────────────────────────────────────────────────────────────────
 
-/** CSS から `selector { ... }` の中身を括弧の対応を数えて取り出す */
-function extractCssBlock(css, selector) {
-  const at = css.indexOf(selector);
-  if (at === -1) return null;
-  const open = css.indexOf("{", at);
-  if (open === -1) return null;
-  let depth = 0;
-  for (let i = open; i < css.length; i++) {
-    if (css[i] === "{") depth++;
-    else if (css[i] === "}") {
-      depth--;
-      if (depth === 0) return css.slice(open + 1, i);
-    }
+/** トークン設定が入っていない HTML を洗い出し、あれば止める */
+function assertTokensInjected(label, htmls, how) {
+  const broken = htmls.filter(([, html]) => html && !html.includes("tailwind.config"));
+  if (broken.length > 0) {
+    console.error(
+      `${label}: デザイントークンの設定が入っていない HTML が ${broken.length} 件あります。\n` +
+        `  例: ${broken.slice(0, 3).map(([name]) => name).join(", ")}\n` +
+        `  bg-card / text-muted-foreground などの色が出ない状態です。${how} を実行して作り直してください。`
+    );
+    process.exit(1);
   }
-  return null;
-}
-
-/** CSS コメントを落として1行1宣言に整える */
-function tidyDeclarations(body, indent) {
-  return body
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split(";")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((s) => `${indent}${s};`)
-    .join("\n");
-}
-
-async function buildHeadInjection() {
-  const cfg = (await import(pathToFileURL(resolve(ROOT, "tailwind.config.js")).href))
-    .default;
-  const css = readFileSync(resolve(ROOT, "src/index.css"), "utf-8");
-  const root = extractCssBlock(css, ":root");
-  const dark = extractCssBlock(css, ".dark");
-  if (!root || !dark) {
-    throw new Error("src/index.css から :root / .dark を取り出せませんでした");
-  }
-  const config = JSON.stringify(
-    { darkMode: cfg.darkMode, theme: { extend: cfg.theme.extend } },
-    null,
-    2
-  )
-    .split("\n")
-    .map((l, i) => (i === 0 ? l : `      ${l}`))
-    .join("\n");
-
-  return `    <!-- このコンポーネント集のデザイントークン。
-         bg-card / text-muted-foreground などは素の Tailwind には無いので、
-         CDN に設定を渡して定義する（Play CDN 公式の方法）。 -->
-    <script>
-      tailwind.config = ${config};
-    </script>
-    <style>
-      :root {
-${tidyDeclarations(root, "        ")}
-      }
-      .dark {
-${tidyDeclarations(dark, "        ")}
-      }
-      * { border-color: hsl(var(--border)); }
-      body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
-    </style>
-`;
-}
-
-/** <head> の末尾に設定を差し込む。既に入っていれば何もしない。 */
-function injectHead(html, injection) {
-  if (html.includes("tailwind.config")) return html;
-  return html.replace("  </head>", `${injection}  </head>`);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -210,8 +150,6 @@ console.log(`${NAME} を組み立てます…\n`);
 rmSync(STAGE, { recursive: true, force: true });
 mkdirSync(STAGE, { recursive: true });
 
-const injection = await buildHeadInjection();
-
 // --- README / LICENSE ---
 copyOne("docs/dist-README.md", join(STAGE, "README.md"));
 copyOne("LICENSE", join(STAGE, "LICENSE"));
@@ -248,19 +186,22 @@ const demoCount = readdirSync(join(STAGE, "components/demos"), { recursive: true
   .filter((f) => String(f).endsWith(".tsx"))
   .length;
 
-// --- html/ : 880件 + index.json（Tailwind 設定を注入したもの） ---
+// --- html/ : 880件 + index.json ---
 const htmlSrc = resolve(ROOT, "public/html");
 const htmlDst = join(STAGE, "html");
 mkdirSync(htmlDst, { recursive: true });
-let htmlCount = 0;
+const htmlFiles = readdirSync(htmlSrc).filter((f) => f.endsWith(".html"));
+assertTokensInjected(
+  "html/",
+  htmlFiles.map((f) => [f, readFileSync(join(htmlSrc, f), "utf-8")]),
+  "npm run html"
+);
 for (const f of readdirSync(htmlSrc)) {
-  if (f.endsWith(".html")) {
-    writeFileSync(join(htmlDst, f), injectHead(readFileSync(join(htmlSrc, f), "utf-8"), injection));
-    htmlCount++;
-  } else if (f === "index.json") {
+  if (f.endsWith(".html") || f === "index.json") {
     copyFileSync(join(htmlSrc, f), join(htmlDst, f));
   }
 }
+const htmlCount = htmlFiles.length;
 copied += htmlCount + 1;
 
 // --- registry/ : shadcn 互換 JSON ---
@@ -284,10 +225,12 @@ try {
 if (fullBundle.edition !== "full") {
   throw new Error(`MCP バンドルが full になっていません: ${fullBundle.edition}`);
 }
-// MCP が返す HTML も配布物と同じものにする
-for (const item of fullBundle.items) {
-  if (item.html) item.html = injectHead(item.html, injection);
-}
+// MCP が返す HTML も public/html/ から来るので、同じ検査を通す
+assertTokensInjected(
+  "mcp/data/components.json",
+  fullBundle.items.map((i) => [i.id, i.html]),
+  "npm run html"
+);
 copyTree(resolve(ROOT, "mcp/src"), join(STAGE, "mcp/src"));
 copyOne("mcp/package.json", join(STAGE, "mcp/package.json"));
 copyOne("mcp/README.md", join(STAGE, "mcp/README.md"));
@@ -301,8 +244,7 @@ copied++;
 
 // --- studio/ : ビルド済み ---
 // Vite は public/ をそのまま dist/ にコピーするので、dist/r と dist/html は
-// registry/ と html/ の丸ごと重複になる（合わせて 12MB）。しかも dist/html は
-// Tailwind 設定を注入する前の版なので、残すと配布物の中で食い違う。
+// registry/ と html/ の丸ごと重複になる（合わせて 12MB）。
 // スタジオ本体はどちらも実行時に参照していないので外す。
 const DIST = resolve(ROOT, "dist");
 const DIST_DUPES = new Set(["r", "html"]);

@@ -28,6 +28,7 @@ import {
 } from "@/lib/plan";
 import type { Lang } from "@/lib/i18n";
 import { tDesc, tName } from "@/registry/i18n";
+import { variantLabel } from "@/lib/variant";
 import type { RegistryEntry } from "@/registry";
 
 type Tab = "preview" | "code" | "vanilla";
@@ -45,6 +46,7 @@ const PREVIEW_COPY = {
     limitReached: `本日のコピー上限（${FREE_DAILY_COPY_LIMIT}回）に達しました。`,
     makeUnlimited: "無制限にする",
     principle: "なぜ効く？ — 設計意図",
+    collection: "コレクション",
     vStatic: "静的",
     vDynamic: "動的",
   },
@@ -59,6 +61,7 @@ const PREVIEW_COPY = {
     limitReached: `Daily copy limit (${FREE_DAILY_COPY_LIMIT}) reached.`,
     makeUnlimited: "Go unlimited",
     principle: "Why it works — design intent",
+    collection: "Collection",
     vStatic: "Static",
     vDynamic: "Dynamic",
   },
@@ -155,6 +158,7 @@ export function PreviewCanvas({
   onUpgrade: () => void;
 }) {
   const c = PREVIEW_COPY[lang];
+  const variant = variantLabel(entry);
   const [tab, setTab] = useState<Tab>("preview");
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [source, setSource] = useState<string | null>(null);
@@ -234,6 +238,16 @@ export function PreviewCanvas({
             <h2 className="text-lg font-semibold tracking-tight">
               {tName(lang, entry.id, entry.name)}
             </h2>
+            {/* 同名が他にもある時だけ、どちらを見ているか分かるようにする */}
+            {variant && (
+              <span
+                className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+                title={`${c.collection}: ${variant} · ${entry.id}`}
+              >
+                <span className="sr-only">{c.collection} </span>
+                {variant}
+              </span>
+            )}
             {entry.level === "advanced" && (
               <Badge className="bg-violet-500/15 text-violet-500 hover:bg-violet-500/15">
                 {c.advanced}
@@ -249,9 +263,10 @@ export function PreviewCanvas({
             {tDesc(lang, entry.id, entry.description)}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 幅の切替は狭い画面では意味が薄い上に行が溢れるので畳む */}
           {tab === "preview" && (
-            <div className="flex rounded-md border p-0.5">
+            <div className="hidden rounded-md border p-0.5 sm:flex">
               {(Object.keys(VIEWPORTS) as Viewport[]).map((v) => {
                 const Icon = VIEWPORTS[v].icon;
                 return (
