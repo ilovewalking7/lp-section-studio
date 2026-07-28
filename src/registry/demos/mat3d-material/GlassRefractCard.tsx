@@ -45,7 +45,7 @@ export default function GlassRefractCard() {
 
   return (
     <div
-      className="flex w-full items-center justify-center px-4 py-12"
+      className="flex w-full items-center justify-center overflow-x-hidden px-4 py-12"
       style={{ perspective: "1000px" }}
     >
       {/* colorful backdrop so the blur/refraction is visible */}

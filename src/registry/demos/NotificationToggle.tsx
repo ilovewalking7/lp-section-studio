@@ -35,7 +35,11 @@ export default function NotificationToggle() {
                 : "アプリからのお知らせを受け取る"}
             </div>
           </div>
-          <Switch checked={push} onCheckedChange={setPush} />
+          <Switch
+              checked={push}
+              onCheckedChange={setPush}
+              aria-label={en ? "Push notifications" : "プッシュ通知"}
+            />
         </div>
         <div className="flex items-center justify-between">
           <div>
@@ -48,7 +52,11 @@ export default function NotificationToggle() {
                 : "週次のまとめをメールで受け取る"}
             </div>
           </div>
-          <Switch checked={email} onCheckedChange={setEmail} />
+          <Switch
+              checked={email}
+              onCheckedChange={setEmail}
+              aria-label={en ? "Email digest" : "メールのまとめ"}
+            />
         </div>
       </CardContent>
     </Card>

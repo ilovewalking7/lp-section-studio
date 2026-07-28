@@ -53,12 +53,14 @@ export default function PromptComposerGlow() {
             <div className="flex items-center gap-1">
               <button
                 type="button"
+                aria-label={en ? "Attach a file" : "ファイルを添付"}
                 className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Paperclip className="size-4" />
               </button>
               <button
                 type="button"
+                aria-label={en ? "Voice input" : "音声入力"}
                 className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Mic className="size-4" />
@@ -75,6 +77,7 @@ export default function PromptComposerGlow() {
               <button
                 type="button"
                 disabled={!value.trim()}
+                aria-label={en ? "Send" : "送信"}
                 className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-sky-600 text-white shadow-md transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
               >
                 <ArrowUp className="size-4" />

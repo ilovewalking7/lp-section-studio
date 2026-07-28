@@ -70,7 +70,7 @@ export default function CommandMenu() {
   let flatIndex = -1;
 
   return (
-    <div className="relative w-full max-w-lg">
+    <div className="relative w-full max-w-lg overflow-x-hidden px-6">
       <div
         className="pointer-events-none absolute -inset-6 rounded-3xl opacity-60 blur-2xl"
         style={{

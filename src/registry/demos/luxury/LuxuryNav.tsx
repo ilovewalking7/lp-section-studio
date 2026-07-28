@@ -29,11 +29,17 @@ export default function LuxuryNav() {
   return (
     <div className="w-full bg-[#0a0a0a] text-stone-100">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <button className="text-stone-400 transition-colors hover:text-amber-200 md:hidden">
+        <button
+          aria-label={en ? "Menu" : "メニュー"}
+          className="text-stone-400 transition-colors hover:text-amber-200 md:hidden"
+        >
           <Menu className="h-5 w-5" />
         </button>
 
-        <nav className="hidden items-center gap-9 md:flex">
+        <nav
+          aria-label={en ? "Main (left)" : "メイン（左）"}
+          className="hidden items-center gap-9 md:flex"
+        >
           {links.slice(0, 2).map((l, i) => (
             <NavLink
               key={l.en}
@@ -51,7 +57,10 @@ export default function LuxuryNav() {
           AURÉL
         </a>
 
-        <nav className="hidden items-center gap-9 md:flex">
+        <nav
+          aria-label={en ? "Main (right)" : "メイン（右）"}
+          className="hidden items-center gap-9 md:flex"
+        >
           {links.slice(2).map((l, i) => (
             <NavLink
               key={l.en}

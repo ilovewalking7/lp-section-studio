@@ -54,7 +54,7 @@ export default function AutoSpinCarousel() {
   const radius = 200;
 
   return (
-    <div className="flex w-full flex-col items-center gap-6 py-8">
+    <div className="flex w-full flex-col items-center gap-6 py-8 overflow-x-hidden">
       <div
         className="relative"
         style={{ width: 180, height: 160, perspective: "1000px" }}

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -18,33 +17,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { getPlans, getComparison, type PlanId } from "@/lib/plan";
 import type { Lang } from "@/lib/i18n";
 
-/** 年払いの割引率（月額×12 と年額の差）を整数%で返す。0なら割引なし。 */
-function annualDiscountPct(priceMonthly: number, priceAnnual: number): number {
-  const full = priceMonthly * 12;
-  if (full <= 0 || priceAnnual <= 0) return 0;
-  return Math.round(((full - priceAnnual) / full) * 100);
-}
+/** 3桁区切りの円表記 */
+const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
 interface Copy {
   back: string;
   badgeSections: string;
   title: string;
   subcopy: string;
-  monthly: string;
-  annual: string;
-  toggleAria: string;
-  maxSave: string;
-  popular: string;
   free: string;
-  perMonth: string;
-  billedYearly: (annualPrice: number) => string;
-  saveYearly: (pct: number) => string;
+  oneTime: string;
+  usdNote: (u: number) => string;
   freeNote: string;
-  monthlyNote: string;
+  fullNote: string;
+  recommended: string;
   currentPlan: string;
   demoNote: string;
   yesAria: string;
@@ -62,115 +51,108 @@ interface Copy {
 const COPY: { ja: Copy; en: Copy } = {
   ja: {
     back: "スタジオに戻る",
-    badgeSections: "830+ セクション",
-    title: "シンプルな料金。",
-    subcopy: "あなたが必要なのはコードだけ。所有権はすべてあなたに。",
-    monthly: "月払い",
-    annual: "年払い",
-    toggleAria: "年払いに切り替え",
-    maxSave: "最大 20% お得",
-    popular: "人気",
+    badgeSections: "880 コンポーネント",
+    title: "買い切り。月額はありません。",
+    subcopy:
+      "一度払えば終わりです。追加も更新も無料で、解約というものがありません。",
     free: "¥0",
-    perMonth: "/月",
-    billedYearly: (annualPrice) => `年 $${annualPrice} 一括`,
-    saveYearly: (pct) => `年払いで${pct}% お得`,
-    freeNote: "ずっと無料。カード登録は不要です。",
-    monthlyNote: "月ごとの請求。いつでも解約できます。",
-    currentPlan: "現在のプラン",
-    demoNote: "※ 現在は決済未接続のデモです。プランは体験用に切り替えできます。",
+    oneTime: "買い切り",
+    usdNote: (u) => `およそ $${u}`,
+    freeNote: "登録は不要です。MCP を入れるだけで使えます。",
+    fullNote: "追加費用はありません。更新も無料です。",
+    recommended: "おすすめ",
+    currentPlan: "利用中",
+    demoNote:
+      "※ 決済は BOOTH で行います。このページからの購入導線は準備中です。",
     yesAria: "あり",
     noAria: "なし",
-    compareTitle: "プランの比較",
+    compareTitle: "無料版と買い切り版の違い",
     compareSubtitle:
-      "すべてのプランに共通する機能と、上位プランで解放される機能。",
-    featureCol: "機能",
+      "無料版でも 880 個すべてをブラウザで見られます。違うのは「取り出せる数」です。",
+    featureCol: "項目",
     faqTitle: "よくある質問",
     faq: [
       {
+        q: "なぜ月額ではないのですか？",
+        a: "コンポーネント集は一度コピーしたら終わりの買い物で、毎月払い続ける理由がないからです。月額にすると、こちらにも継続して更新やサポートを出す義務が生まれ、その分が値段に乗ります。買い切りなら、必要なときに一度だけ払えば済みます。",
+      },
+      {
+        q: "React を使っていない案件でも使えますか？",
+        a: "はい。880 個のうち 397 個は状態を持たない純粋な表示部品で、React 抜きの静的 HTML として書き出せます。出力に React も Babel も含まれないので、PHP・Rails・Hugo・WordPress にもそのまま貼れます。残りの 483 個は状態や操作を持つため、静的版は見た目だけになります（操作は動きません）。",
+      },
+      {
+        q: "「検証済み」とは具体的に何ですか？",
+        a: "880 個すべてに対して、4 つの検査を CI で毎回通しています。axe-core による構造アクセシビリティ検査、デザイントークンのコントラスト計算（WCAG の相対輝度）、キーボードで操作できるかの検査、そして実ブラウザ・幅375px で横スクロールが起きないかの検査です。導入したときには 109 件の違反が見つかり、すべて修正しました。現在はいずれも 0 件です。",
+      },
+      {
+        q: "無料版と買い切り版の違いは？",
+        a: "無料版は MCP 経由で 100 個を取り出せます（すべて React 不要のもの）。買い切り版は 880 個すべてに加えて、shadcn レジストリ配信と商用利用が付きます。なお閲覧とライブプレビューは、無料でも 880 個すべてが対象です。",
+      },
+      {
+        q: "商用利用はできますか？",
+        a: "買い切り版に商用利用ライセンスが含まれます。無料版は個人利用・非商用の範囲です。作った成果物の所有権はあなたにあります。ただし、コンポーネント自体をそのまま再配布・再販することはできません。",
+      },
+      {
         q: "支払い方法は？",
-        a: "クレジットカード（Visa / Mastercard / American Express）に対応予定です。請求は月払い・年払いから選べます。※ 現在は決済未接続のデモのため、実際の課金は発生しません。",
-      },
-      {
-        q: "いつでも解約できますか？",
-        a: "はい。いつでもダッシュボードから解約でき、解約後も請求期間の終了まではご利用いただけます。違約金や解約手数料はありません。",
-      },
-      {
-        q: "商用利用のライセンスは含まれますか？",
-        a: "Pro と Studio には商用利用ライセンスが含まれます（Pro は1名、Studio はチーム）。Free は個人・非商用の範囲でご利用いただけます。生成したコードの所有権はすべてあなたにあります。",
-      },
-      {
-        q: "Free と Pro の違いは？",
-        a: "Free でも 830+ セクションの閲覧・ライブプレビューは無制限ですが、コードのコピーは1日10回までです。Pro はコピー無制限・バニラ HTML エクスポート・shadcn レジストリ配信・新着の先行アクセス・商用ライセンスが付きます。",
-      },
-      {
-        q: "チーム（Studio）のシートはどう使いますか？",
-        a: "Studio は5シートまで含まれ、メンバーを招待して社内・チームで共有利用できます。各メンバーがそれぞれ自分のアカウントでログインし、商用ライセンスはチーム全体に適用されます。",
-      },
-      {
-        q: "返金はできますか？",
-        a: "ご購入から14日以内であれば、ご利用状況にかかわらず全額返金に対応します。サポートまでご連絡ください。※ 現在は決済未接続のデモのため、返金処理は発生しません。",
+        a: "BOOTH での販売を予定しています。クレジットカード・コンビニ払い・PayPay などに対応します。※ 現在は準備中です。",
       },
     ],
-    ctaTitle: "まずは無料で。",
+    ctaTitle: "まず無料の MCP から。",
     ctaSubcopy:
-      "830+ のセクションを今すぐ閲覧・プレビュー。気に入ったらいつでもアップグレードできます。",
+      "100 個をそのまま使えます。すべて React 不要のものなので、違いはすぐ分かります。",
     ctaButton: "スタジオを開く",
   },
   en: {
     back: "Back to studio",
-    badgeSections: "830+ sections",
-    title: "Simple pricing.",
-    subcopy: "All you need is the code. You own all of it.",
-    monthly: "Monthly",
-    annual: "Annual",
-    toggleAria: "Switch to annual billing",
-    maxSave: "Save up to 20%",
-    popular: "Popular",
+    badgeSections: "880 components",
+    title: "Pay once. No subscription.",
+    subcopy:
+      "One payment and you're done. Additions and updates are included, and there is nothing to cancel.",
     free: "Free",
-    perMonth: "/mo",
-    billedYearly: (annualPrice) => `$${annualPrice} billed yearly`,
-    saveYearly: (pct) => `Save ${pct}% yearly`,
-    freeNote: "Free forever. No card required.",
-    monthlyNote: "Billed monthly. Cancel anytime.",
-    currentPlan: "Current plan",
+    oneTime: "one time",
+    usdNote: (u) => `about $${u}`,
+    freeNote: "No sign-up. Just install the MCP.",
+    fullNote: "No further charges. Updates included.",
+    recommended: "Recommended",
+    currentPlan: "Current",
     demoNote:
-      "Note: payments are not connected in this demo. Plans can be switched to try them out.",
+      "Note: checkout runs on BOOTH. The purchase link from this page is not live yet.",
     yesAria: "Yes",
     noAria: "No",
-    compareTitle: "Compare plans",
+    compareTitle: "Free vs. Full",
     compareSubtitle:
-      "Features shared by every plan, and the ones unlocked on higher tiers.",
-    featureCol: "Feature",
+      "You can browse all 880 either way. What differs is how many you can take.",
+    featureCol: "Item",
     faqTitle: "Frequently asked questions",
     faq: [
       {
-        q: "What payment methods are supported?",
-        a: "Credit cards (Visa / Mastercard / American Express) will be supported. You can choose monthly or annual billing. Note: payments are not connected in this demo, so no actual charges are made.",
+        q: "Why not a subscription?",
+        a: "A component library is a one-off purchase — you copy what you need and you are done. Charging monthly would also oblige us to keep shipping just to justify the fee, and that cost ends up in the price. Pay once, take what you need.",
       },
       {
-        q: "Can I cancel anytime?",
-        a: "Yes. You can cancel anytime from your dashboard, and you keep access until the end of the billing period. There are no penalties or cancellation fees.",
+        q: "Can I use these without React?",
+        a: "Yes. 397 of the 880 are purely presentational and export as static HTML with no React and no Babel in the output. Paste them into PHP, Rails, Hugo or WordPress as-is. The other 483 hold state, so their static version is visual only — the interactions will not work.",
       },
       {
-        q: "Is a commercial license included?",
-        a: "Pro and Studio include a commercial license (Pro for 1 user, Studio for a team). Free is for personal, non-commercial use. You own all of the code you generate.",
+        q: "What does “verified” actually mean?",
+        a: "All 880 pass four automated checks on every CI run: structural accessibility via axe-core, contrast computed from the design tokens using WCAG relative luminance, keyboard reachability, and a real-browser check at 375px wide for horizontal overflow. Introducing these checks surfaced 109 real defects. All are fixed; all four now report zero.",
       },
       {
-        q: "What's the difference between Free and Pro?",
-        a: "On Free you can browse and live-preview all 830+ sections without limits, but code copying is capped at 10 per day. Pro adds unlimited copying, vanilla HTML export, shadcn registry delivery, early access to new sections, and a commercial license.",
+        q: "What is the difference between Free and Full?",
+        a: "Free gives you 100 components over MCP, all of them React-free. Full gives you all 880, plus shadcn registry delivery and a commercial license. Browsing and live preview cover all 880 either way.",
       },
       {
-        q: "How do the team (Studio) seats work?",
-        a: "Studio includes up to 5 seats, so you can invite members and share it across your team or company. Each member signs in with their own account, and the commercial license applies to the whole team.",
+        q: "Is commercial use allowed?",
+        a: "Yes, with the Full edition. Free is for personal, non-commercial use. You own what you build. You may not redistribute or resell the components themselves.",
       },
       {
-        q: "Can I get a refund?",
-        a: "Within 14 days of purchase we offer a full refund regardless of usage. Just contact support. Note: payments are not connected in this demo, so no refunds are processed.",
+        q: "How do I pay?",
+        a: "Sales will run through BOOTH, which supports credit cards, convenience-store payment and PayPay. Not live yet.",
       },
     ],
-    ctaTitle: "Start for free.",
+    ctaTitle: "Start with the free MCP.",
     ctaSubcopy:
-      "Browse and preview 830+ sections right now. Upgrade anytime once you're hooked.",
+      "100 components, ready to use. All React-free, so the difference is obvious right away.",
     ctaButton: "Open the studio",
   },
 };
@@ -208,7 +190,6 @@ export default function Pricing({
   onChoosePlan: (p: PlanId) => void;
   onOpenStudio: () => void;
 }) {
-  const [annual, setAnnual] = useState<boolean>(true);
   const t = COPY[lang];
   const plans = getPlans(lang);
   const comparison = getComparison(lang);
@@ -246,59 +227,16 @@ export default function Pricing({
               {t.title}
             </h1>
             <p className="mt-4 text-lg text-muted-foreground">{t.subcopy}</p>
-
-            {/* Monthly / Annual toggle */}
-            <div className="mt-8 inline-flex items-center gap-3 rounded-full border bg-card px-4 py-2 shadow-sm">
-              <span
-                className={cn(
-                  "text-sm transition-colors",
-                  !annual
-                    ? "font-medium text-foreground"
-                    : "text-muted-foreground"
-                )}
-              >
-                {t.monthly}
-              </span>
-              <Switch
-                checked={annual}
-                onCheckedChange={setAnnual}
-                aria-label={t.toggleAria}
-              />
-              <span
-                className={cn(
-                  "text-sm transition-colors",
-                  annual
-                    ? "font-medium text-foreground"
-                    : "text-muted-foreground"
-                )}
-              >
-                {t.annual}
-              </span>
-              <Badge className="ml-1 border-transparent bg-primary/15 text-primary hover:bg-primary/15">
-                {t.maxSave}
-              </Badge>
-            </div>
           </div>
         </div>
       </header>
 
       {/* Pricing cards */}
-      <section className="mx-auto max-w-6xl px-6 py-14">
-        <div className="grid items-start gap-6 lg:grid-cols-3">
+      <section className="mx-auto max-w-4xl px-6 py-14">
+        <div className="grid items-start gap-6 md:grid-cols-2">
           {plans.map((plan) => {
             const isFree = plan.id === "free";
             const isCurrent = currentPlan === plan.id;
-            const discount = annualDiscountPct(
-              plan.priceMonthly,
-              plan.priceAnnual
-            );
-            const monthlyEffective = Math.round(plan.priceAnnual / 12);
-
-            const priceLabel = isFree
-              ? t.free
-              : annual
-                ? `$${monthlyEffective}${t.perMonth}`
-                : `$${plan.priceMonthly}${t.perMonth}`;
 
             return (
               <Card
@@ -306,7 +244,7 @@ export default function Pricing({
                 className={cn(
                   "relative flex h-full flex-col transition-shadow",
                   plan.highlight
-                    ? "border-primary/40 shadow-lg ring-2 ring-primary lg:scale-[1.03]"
+                    ? "border-primary/40 shadow-lg ring-2 ring-primary md:scale-[1.03]"
                     : "hover:shadow-md"
                 )}
               >
@@ -314,47 +252,36 @@ export default function Pricing({
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="gap-1 border-transparent bg-primary text-primary-foreground shadow">
                       <Zap className="h-3.5 w-3.5" />
-                      {t.popular}
+                      {t.recommended}
                     </Badge>
                   </div>
                 )}
 
                 <CardHeader className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">{plan.name}</CardTitle>
-                    <span className="text-xs text-muted-foreground">
-                      {plan.seats}
-                    </span>
-                  </div>
+                  <CardTitle className="text-xl">{plan.name}</CardTitle>
                   <CardDescription>{plan.tagline}</CardDescription>
                 </CardHeader>
 
                 <CardContent className="flex flex-1 flex-col gap-6">
                   <div>
-                    <div className="flex items-baseline gap-1">
+                    <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-bold tracking-tight">
-                        {priceLabel}
+                        {isFree ? t.free : yen(plan.price)}
                       </span>
-                    </div>
-                    {!isFree && annual ? (
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {t.billedYearly(plan.priceAnnual)}
+                      {!isFree && (
+                        <span className="text-sm text-muted-foreground">
+                          {t.oneTime}
                         </span>
-                        {discount > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                          >
-                            {t.saveYearly(discount)}
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {isFree ? t.freeNote : t.monthlyNote}
+                      )}
+                    </div>
+                    {!isFree && plan.priceUsd > 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t.usdNote(plan.priceUsd)}
                       </p>
                     )}
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {isFree ? t.freeNote : t.fullNote}
+                    </p>
                   </div>
 
                   <ul className="space-y-3">
@@ -401,7 +328,7 @@ export default function Pricing({
       </section>
 
       {/* Comparison table */}
-      <section className="mx-auto max-w-6xl px-6 pb-16">
+      <section className="mx-auto max-w-4xl px-6 pb-16">
         <div className="mb-6 text-center">
           <h2 className="text-2xl font-bold tracking-tight">
             {t.compareTitle}
@@ -412,7 +339,7 @@ export default function Pricing({
         </div>
 
         <div className="overflow-x-auto rounded-xl border bg-card">
-          <table className="w-full min-w-[640px] border-collapse text-left">
+          <table className="w-full min-w-[560px] border-collapse text-left">
             <thead>
               <tr className="border-b bg-muted/40">
                 <th
@@ -456,14 +383,7 @@ export default function Pricing({
                   </td>
                   <td className="bg-primary/5 px-5 py-3.5 text-center">
                     <CompareCell
-                      value={row.pro}
-                      yesLabel={t.yesAria}
-                      noLabel={t.noAria}
-                    />
-                  </td>
-                  <td className="px-5 py-3.5 text-center">
-                    <CompareCell
-                      value={row.studio}
+                      value={row.full}
                       yesLabel={t.yesAria}
                       noLabel={t.noAria}
                     />

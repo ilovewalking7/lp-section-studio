@@ -59,7 +59,9 @@ export default function TableRowDragHandle() {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-            <th className="w-8 px-2 py-2" />
+            <th className="w-8 px-2 py-2">
+              <span className="sr-only">{en ? "Reorder" : "並び替え"}</span>
+            </th>
             <th className="px-3 py-2 font-medium">{en ? "Name" : "名前"}</th>
             <th className="px-3 py-2 text-right font-medium">
               {en ? "Score" : "スコア"}

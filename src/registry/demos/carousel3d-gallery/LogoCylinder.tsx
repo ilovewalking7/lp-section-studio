@@ -49,7 +49,7 @@ export default function LogoCylinder() {
   const radius = 200;
 
   return (
-    <div className="flex w-full justify-center py-10">
+    <div className="flex w-full justify-center py-10 overflow-x-hidden">
       <div
         className="relative"
         style={{ width: 160, height: 100, perspective: "1000px" }}

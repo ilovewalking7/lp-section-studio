@@ -71,7 +71,7 @@ export default function AppScreenshotFrameHero() {
               </div>
               <div className="flex-1 space-y-4 p-5 text-left">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">{en ? "Monthly report" : "月次レポート"}</h3>
+                  <h2 className="text-sm font-semibold">{en ? "Monthly report" : "月次レポート"}</h2>
                   <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-xs text-white/50">
                     <Plus className="size-3" /> {en ? "Add" : "追加"}
                   </span>

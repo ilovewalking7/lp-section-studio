@@ -28,7 +28,7 @@ export default function NeonEdgeGlowCards() {
     document.documentElement.lang === "en";
 
   return (
-    <div className="w-full bg-slate-950 py-12">
+    <div className="w-full bg-slate-950 py-12 overflow-x-hidden">
       <div
         className="relative mx-auto flex h-64 max-w-3xl items-center justify-center"
         style={{ perspective: "1100px" }}

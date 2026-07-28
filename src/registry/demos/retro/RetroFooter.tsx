@@ -28,7 +28,13 @@ const columns = [
   },
 ];
 
-const socials = [Twitter, Instagram, Youtube, Github];
+/** アイコンだけのリンクは名前を持たないので、読み上げ用のラベルを添える */
+const socials = [
+  { Icon: Twitter, label: "X (Twitter)" },
+  { Icon: Instagram, label: "Instagram" },
+  { Icon: Youtube, label: "YouTube" },
+  { Icon: Github, label: "GitHub" },
+];
 
 export default function RetroFooter() {
   const en =
@@ -80,10 +86,11 @@ export default function RetroFooter() {
                 : "80年代の夢を、現代のピクセルへ。"}
             </p>
             <div className="mt-5 flex gap-3">
-              {socials.map((Icon, i) => (
+              {socials.map(({ Icon, label }) => (
                 <a
-                  key={i}
+                  key={label}
                   href="#"
+                  aria-label={label}
                   className="grid size-9 place-items-center rounded-md border border-[#05d9e8]/40 text-[#05d9e8] transition-all hover:bg-[#05d9e8]/10 hover:shadow-[0_0_14px_rgba(5,217,232,0.6)]"
                 >
                   <Icon className="size-4" />

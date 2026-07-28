@@ -28,7 +28,7 @@ export default function SlidingDeckShadow() {
   const [active, setActive] = useState(0);
 
   return (
-    <div className="w-full bg-background py-12">
+    <div className="w-full bg-background py-12 overflow-x-hidden">
       <div
         className="relative mx-auto flex h-60 max-w-2xl items-center justify-center"
         style={{ perspective: "1300px" }}

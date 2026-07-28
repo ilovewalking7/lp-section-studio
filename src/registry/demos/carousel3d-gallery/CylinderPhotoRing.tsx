@@ -30,7 +30,7 @@ export default function CylinderPhotoRing() {
   const radius = 220;
 
   return (
-    <div className="flex w-full flex-col items-center gap-6 py-8">
+    <div className="flex w-full flex-col items-center gap-6 py-8 overflow-x-hidden">
       <div
         className="relative"
         style={{ width: 200, height: 160, perspective: "1000px" }}

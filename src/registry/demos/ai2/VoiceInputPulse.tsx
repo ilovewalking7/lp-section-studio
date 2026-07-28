@@ -66,6 +66,15 @@ export default function VoiceInputPulse() {
       <button
         type="button"
         onClick={() => setRecording((r) => !r)}
+        aria-label={
+          recording
+            ? en
+              ? "Stop recording"
+              : "録音を停止"
+            : en
+              ? "Start recording"
+              : "録音を開始"
+        }
         className={cn(
           "relative flex size-16 items-center justify-center rounded-full text-white shadow-lg transition-all active:scale-95",
           recording

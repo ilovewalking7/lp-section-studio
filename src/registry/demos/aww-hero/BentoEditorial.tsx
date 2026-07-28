@@ -81,7 +81,10 @@ export default function BentoEditorial() {
                 : "レスポンシブとダーク/ライト両対応。どこに置いても馴染む。"}
             </p>
           </div>
-          <button className="group flex size-11 items-center justify-center rounded-full bg-white text-black">
+          <button
+            aria-label={en ? "View work" : "作品を見る"}
+            className="group flex size-11 items-center justify-center rounded-full bg-white text-black"
+          >
             <ArrowUpRight className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </button>
         </div>

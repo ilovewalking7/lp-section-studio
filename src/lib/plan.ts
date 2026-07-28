@@ -2,22 +2,30 @@ import { useEffect, useState } from "react";
 import type { Lang } from "@/lib/i18n";
 
 /**
- * 料金プランと Free/Pro の出し分け（サービス切り分け）の単一の真実。
- * Pricing ページ・LP・スタジオ内のゲーティングはすべてここを参照する。
+ * 料金と、無料版／買い切り版の切り分けの単一の真実。
+ * Pricing ページ・LP・スタジオ内の解放判定はすべてここを参照する。
  *
- * 価格は MC21（21st.dev）の Pro = $20/月 に合わせ、上位にチーム向け Studio = $100/月 を用意。
- * 表示文言は日本語/英語の二言語（`getPlans(lang)` / `getComparison(lang)`）。
+ * ── なぜ月額ではなく買い切りなのか ──
+ * コンポーネント集は「一度コピーしたら終わり」の買い物で、継続して価値が
+ * 出る種類のものではない。月額にすると解約が止まらないし、こちらにも
+ * 継続的な更新・サポートの義務が生まれる。実際 Tailwind UI も Aceternity も
+ * 買い切りで、月額なのは毎回生成する型（原価が毎回かかる型）だけ。
+ * ここは生成しないので、買い切りが素直に噛み合う。
+ *
+ * 無料版は「入口」として置く。ドメインも SEO も使わない以上、見つけて
+ * もらう経路は MCP しかない。無料で入れてもらえないと存在を知られない。
  */
 
-export type PlanId = "free" | "pro" | "studio";
+export type PlanId = "free" | "full";
 
 export interface PlanTier {
   id: PlanId;
   name: string;
   tagline: string;
-  priceMonthly: number; // USD / 月
-  priceAnnual: number; // USD / 年（実質月額の割引込み）
-  seats: string;
+  /** 円。買い切りなので月額ではない。0 は無料。 */
+  price: number;
+  /** 参考表示用のドル概算。0 は表示しない。 */
+  priceUsd: number;
   cta: string;
   highlight?: boolean;
   features: string[];
@@ -25,103 +33,72 @@ export interface PlanTier {
 
 interface PlanCore {
   id: PlanId;
-  priceMonthly: number;
-  priceAnnual: number;
+  price: number;
+  priceUsd: number;
   highlight?: boolean;
 }
 
+/** 英語表示の参考値に使う換算レート。決済は円建てなので概算で足りる。 */
+const USD_RATE = 163;
+const usd = (yen: number) => Math.round(yen / USD_RATE);
+
 const PLAN_CORE: PlanCore[] = [
-  { id: "free", priceMonthly: 0, priceAnnual: 0 },
-  { id: "pro", priceMonthly: 20, priceAnnual: 192, highlight: true },
-  { id: "studio", priceMonthly: 100, priceAnnual: 960 },
+  { id: "free", price: 0, priceUsd: 0 },
+  { id: "full", price: 9800, priceUsd: usd(9800), highlight: true },
 ];
 
-type PlanText = Pick<PlanTier, "name" | "tagline" | "seats" | "cta" | "features">;
+type PlanText = Pick<PlanTier, "name" | "tagline" | "cta" | "features">;
 
 const PLAN_TEXT: Record<PlanId, { ja: PlanText; en: PlanText }> = {
   free: {
     ja: {
-      name: "Free",
-      tagline: "まず触って試す",
-      seats: "1人",
-      cta: "無料ではじめる",
+      name: "無料",
+      tagline: "MCP から 100 個をすぐ使う",
+      cta: "MCP を入れる",
       features: [
-        "830+ セクションを無制限に閲覧・ライブプレビュー",
-        "13 スタイルテーマすべて",
-        "検索・フィルタ・お気に入り",
-        "コードのコピー：1日10回まで",
-        "個人・非商用ライセンス",
+        "MCP 経由で 100 個（すべて React 不要）",
+        "React 抜きの静的 HTML をそのまま取得",
+        "880 個すべてをブラウザで閲覧・ライブプレビュー",
+        "個人利用・非商用",
       ],
     },
     en: {
       name: "Free",
-      tagline: "Try it first",
-      seats: "1 seat",
-      cta: "Start free",
+      tagline: "Start with 100 components via MCP",
+      cta: "Install the MCP",
       features: [
-        "Browse & live-preview all 830+ sections",
-        "All 13 style themes",
-        "Search, filters & favorites",
-        "Copy code: up to 10 / day",
-        "Personal, non-commercial license",
+        "100 components over MCP (all React-free)",
+        "Static HTML you can paste as-is",
+        "Browse and live-preview all 880 in the browser",
+        "Personal, non-commercial use",
       ],
     },
   },
-  pro: {
+  full: {
     ja: {
-      name: "Pro",
-      tagline: "制作を仕事にする人へ",
-      seats: "1人",
-      cta: "Pro にアップグレード",
+      name: "全部入り",
+      tagline: "880 個すべて。一度払えば終わり",
+      cta: "買い切りで手に入れる",
       features: [
-        "Free のすべて",
-        "コードのコピー：無制限",
-        "バニラ HTML エクスポート",
+        "880 個すべて（うち 397 個は React 不要）",
+        "4 つの機械検査を通過（a11y・コントラスト・キーボード・横スクロール）",
+        "MCP の全部入り版",
         "shadcn レジストリ配信（npx で取り込み）",
-        "新着セクションの先行アクセス",
-        "商用利用ライセンス（1名）",
+        "商用利用 可",
+        "追加・更新は無料",
       ],
     },
     en: {
-      name: "Pro",
-      tagline: "For people who ship",
-      seats: "1 seat",
-      cta: "Upgrade to Pro",
+      name: "Full",
+      tagline: "All 880. Pay once.",
+      cta: "Buy once",
       features: [
-        "Everything in Free",
-        "Unlimited code copy",
-        "Vanilla HTML export",
-        "shadcn registry (install via npx)",
-        "Early access to new sections",
-        "Commercial license (1 user)",
-      ],
-    },
-  },
-  studio: {
-    ja: {
-      name: "Studio",
-      tagline: "チーム・制作会社向け",
-      seats: "5人",
-      cta: "Studio で導入する",
-      features: [
-        "Pro のすべて（5シート）",
-        "チーム共有・社内利用",
-        "優先サポート＆セクションのリクエスト",
-        "商用利用ライセンス（チーム）",
-        "新テーマ・テンプレートの早期提供",
-      ],
-    },
-    en: {
-      name: "Studio",
-      tagline: "For teams & agencies",
-      seats: "5 seats",
-      cta: "Get Studio",
-      features: [
-        "Everything in Pro (5 seats)",
-        "Team sharing & internal use",
-        "Priority support & section requests",
-        "Commercial license (team)",
-        "Early new themes & templates",
+        "All 880 components (397 of them React-free)",
+        "Passes 4 automated checks (a11y, contrast, keyboard, overflow)",
+        "Full edition of the MCP server",
+        "shadcn registry delivery (npx)",
+        "Commercial use allowed",
+        "Future additions and updates included",
       ],
     },
   },
@@ -134,84 +111,79 @@ export function getPlans(lang: Lang): PlanTier[] {
 /** 後方互換（日本語のデフォルト） */
 export const PLANS: PlanTier[] = getPlans("ja");
 
-/** プランごとの機能比較表（Pricing ページの比較表に使用） */
+/** プランごとの比較表（Pricing ページの比較表に使用） */
 export interface CompareRow {
   label: string;
   free: string | boolean;
-  pro: string | boolean;
-  studio: string | boolean;
+  full: string | boolean;
 }
 
 type Cell = boolean | { ja: string; en: string };
 interface CompareRowSrc {
   label: { ja: string; en: string };
   free: Cell;
-  pro: Cell;
-  studio: Cell;
+  full: Cell;
 }
-
-const unlimited = { ja: "無制限", en: "Unlimited" };
 
 const COMPARE_SRC: CompareRowSrc[] = [
   {
-    label: { ja: "セクション閲覧・ライブプレビュー", en: "Browse & live preview" },
-    free: unlimited,
-    pro: unlimited,
-    studio: unlimited,
+    label: { ja: "収録コンポーネント", en: "Components included" },
+    free: { ja: "100", en: "100" },
+    full: { ja: "880", en: "880" },
+  },
+  {
+    label: {
+      ja: "React 不要（静的 HTML で完成）",
+      en: "React-free (works as static HTML)",
+    },
+    free: { ja: "100", en: "100" },
+    full: { ja: "397", en: "397" },
+  },
+  {
+    label: {
+      ja: "ブラウザで閲覧・ライブプレビュー",
+      en: "Browse & live preview",
+    },
+    free: { ja: "880 すべて", en: "All 880" },
+    full: { ja: "880 すべて", en: "All 880" },
   },
   {
     label: { ja: "13 スタイルテーマ", en: "13 style themes" },
     free: true,
-    pro: true,
-    studio: true,
+    full: true,
   },
   {
-    label: { ja: "検索・フィルタ・お気に入り", en: "Search, filters & favorites" },
+    label: {
+      ja: "a11y・コントラスト・キーボード・横スクロールの自動検査",
+      en: "Automated a11y / contrast / keyboard / overflow checks",
+    },
     free: true,
-    pro: true,
-    studio: true,
+    full: true,
   },
   {
-    label: { ja: "コードのコピー", en: "Code copy" },
-    free: { ja: "1日10回", en: "10 / day" },
-    pro: unlimited,
-    studio: unlimited,
-  },
-  {
-    label: { ja: "バニラ HTML エクスポート", en: "Vanilla HTML export" },
-    free: false,
-    pro: true,
-    studio: true,
+    label: { ja: "MCP サーバ", en: "MCP server" },
+    free: { ja: "100 個", en: "100 components" },
+    full: { ja: "880 個", en: "880 components" },
   },
   {
     label: { ja: "shadcn レジストリ配信（npx）", en: "shadcn registry (npx)" },
     free: false,
-    pro: true,
-    studio: true,
+    full: true,
   },
   {
-    label: { ja: "新着セクションの先行アクセス", en: "Early access to new sections" },
+    label: { ja: "商用利用", en: "Commercial use" },
+    free: { ja: "不可", en: "No" },
+    full: { ja: "可", en: "Yes" },
+  },
+  {
+    label: { ja: "追加・更新", en: "Future additions & updates" },
     free: false,
-    pro: true,
-    studio: true,
+    full: { ja: "無料", en: "Included" },
   },
   {
-    label: { ja: "優先サポート / リクエスト", en: "Priority support / requests" },
-    free: false,
-    pro: false,
-    studio: true,
-  },
-  {
-    label: { ja: "シート数", en: "Seats" },
-    free: { ja: "1", en: "1" },
-    pro: { ja: "1", en: "1" },
-    studio: { ja: "5", en: "5" },
-  },
-  {
-    label: { ja: "商用利用ライセンス", en: "Commercial license" },
-    free: { ja: "不可", en: "None" },
-    pro: { ja: "1名", en: "1 user" },
-    studio: { ja: "チーム", en: "Team" },
+    label: { ja: "支払い", en: "Payment" },
+    free: { ja: "—", en: "—" },
+    full: { ja: "一度だけ", en: "One time" },
   },
 ];
 
@@ -223,8 +195,7 @@ export function getComparison(lang: Lang): CompareRow[] {
   return COMPARE_SRC.map((r) => ({
     label: r.label[lang],
     free: cell(r.free, lang),
-    pro: cell(r.pro, lang),
-    studio: cell(r.studio, lang),
+    full: cell(r.full, lang),
   }));
 }
 
@@ -235,12 +206,12 @@ export function planById(id: PlanId, lang: Lang = "ja"): PlanTier {
   return getPlans(lang).find((p) => p.id === id) ?? getPlans(lang)[0];
 }
 
-/** Pro 以上か（バニラ書き出し・レジストリ配信・無制限コピーの解放判定） */
-export function isPro(plan: PlanId): boolean {
-  return plan === "pro" || plan === "studio";
+/** 買い切り版を持っているか（バニラ書き出し・レジストリ配信・無制限コピーの解放判定） */
+export function hasFullAccess(plan: PlanId): boolean {
+  return plan === "full";
 }
 
-/** Free プランの1日あたりコピー上限 */
+/** 無料版の1日あたりコピー上限 */
 export const FREE_DAILY_COPY_LIMIT = 10;
 
 const copyKey = () => `cs:copies:${new Date().toISOString().slice(0, 10)}`;
@@ -264,8 +235,8 @@ export function incTodayCopies(): void {
 const PLAN_KEY = "cs:plan";
 
 /**
- * 現在のプラン（クライアント保持）。実決済は未接続のため、所有者が体験確認用に切替できる。
- * 本番では認証＋課金（Stripe）で plan を確定する。
+ * 現在のプラン（クライアント保持）。決済は BOOTH など外部で行うため、
+ * ここでは購入後の切り替えのみを持つ。
  */
 export function usePlan(): {
   plan: PlanId;
@@ -274,7 +245,7 @@ export function usePlan(): {
   const [plan, setPlanState] = useState<PlanId>(() => {
     const v = (typeof localStorage !== "undefined" &&
       localStorage.getItem(PLAN_KEY)) as PlanId | null;
-    return v === "pro" || v === "studio" || v === "free" ? v : "free";
+    return v === "full" || v === "free" ? v : "free";
   });
   useEffect(() => {
     try {

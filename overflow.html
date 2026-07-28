@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>横スクロール検査ハーネス</title>
+  </head>
+  <body>
+    <!-- scripts/check-overflow.mjs が Playwright から読み込む検査専用ページ。
+         本番ビルドの入口は index.html だけなので、このページは配信されない。 -->
+    <div id="root"></div>
+    <script type="module" src="/src/overflow-entry.tsx"></script>
+  </body>
+</html>

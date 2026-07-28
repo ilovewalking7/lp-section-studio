@@ -15,9 +15,9 @@ export default function ArcadeCard() {
     typeof document !== "undefined" &&
     document.documentElement.lang === "en";
   return (
-    <div className="bg-[#0d0221] p-10">
+    <div className="bg-[#0d0221] p-5 sm:p-10">
       <div
-        className="relative w-[340px] overflow-hidden rounded-2xl border-2 border-[#ff2e97] bg-gradient-to-b from-[#1a0b2e] to-[#0d0221] p-6"
+        className="relative w-full max-w-[340px] overflow-hidden rounded-2xl border-2 border-[#ff2e97] bg-gradient-to-b from-[#1a0b2e] to-[#0d0221] p-6"
         style={{ boxShadow: "0 0 30px rgba(255,46,151,0.5), inset 0 0 30px rgba(124,58,237,0.2)" }}
       >
         {/* scanline overlay */}

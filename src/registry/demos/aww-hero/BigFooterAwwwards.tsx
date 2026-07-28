@@ -72,7 +72,7 @@ export default function BigFooterAwwwards() {
 
           <div className="grid grid-cols-3 gap-6">
             {COLS.map((col) => (
-              <nav key={col.h}>
+              <nav key={col.h} aria-label={col.h}>
                 <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/35">
                   {col.h}
                 </h3>

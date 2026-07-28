@@ -43,10 +43,11 @@ const columns = [
   },
 ];
 
+/** アイコンだけのリンクは名前を持たないので、読み上げ用のラベルを添える */
 const socials = [
-  { icon: Twitter, color: "#4cc9f0" },
-  { icon: Github, color: "#b388ff" },
-  { icon: Instagram, color: "#ff8fab" },
+  { icon: Twitter, color: "#4cc9f0", label: "X (Twitter)" },
+  { icon: Github, color: "#b388ff", label: "GitHub" },
+  { icon: Instagram, color: "#ff8fab", label: "Instagram" },
 ];
 
 export default function PlayfulFooter() {
@@ -78,6 +79,7 @@ export default function PlayfulFooter() {
                 <a
                   key={i}
                   href="#"
+                  aria-label={s.label}
                   className="inline-flex size-10 items-center justify-center rounded-full text-white transition-transform hover:-translate-y-1"
                   style={{ backgroundColor: s.color }}
                 >

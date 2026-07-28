@@ -71,7 +71,7 @@ export default function BentoHero() {
               }}
             >
               <c.icon className="size-6 text-indigo-300" />
-              <h3 className="mt-3 text-lg font-semibold">{en ? c.titleEn : c.title}</h3>
+              <h2 className="mt-3 text-lg font-semibold">{en ? c.titleEn : c.title}</h2>
               <p className="mt-1 text-sm text-white/55">{en ? c.descEn : c.desc}</p>
             </div>
           ))}

@@ -151,10 +151,13 @@ export default function CommandBar() {
                         const on = idx === active;
                         return (
                           <li key={cmd.label.en}>
+                            {/* aria-selected は listbox の option 用で button には
+                                付けられない。ここは「今どれを指しているか」を
+                                示せれば十分なので aria-current を使う。 */}
                             <button
                               type="button"
                               onMouseEnter={() => setActive(idx)}
-                              aria-selected={on}
+                              aria-current={on ? "true" : undefined}
                               className={cn(
                                 "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                                 on

@@ -8,7 +8,6 @@
  * （LangToggle の影響を受けないため）。
  */
 import { useEffect, useRef, useState } from "react";
-import { isPro } from "@/lib/plan";
 import { LP_TEMPLATES } from "./templates";
 import { buildLpDocument, downloadHtml } from "./export";
 import {
@@ -16,6 +15,7 @@ import {
   SITE_URL,
   getMonthExports,
   incMonthExports,
+  isLpPro,
   useLpPlan,
 } from "./lpPlan";
 import {
@@ -118,7 +118,7 @@ export default function LpBuilder({ onHome }: LpBuilderProps) {
   // 内部で直接使う。Studio 側の usePlan()（src/lib/plan.ts, "cs:plan"）とはキーが独立した
   // 別サービスの状態のため混線しない。
   const { plan, setPlan } = useLpPlan();
-  const pro = isPro(plan);
+  const pro = isLpPro(plan);
 
   const [initial] = useState(resolveInitialState);
   const [step, setStep] = useState<Step>(initial.step);

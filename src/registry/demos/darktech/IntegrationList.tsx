@@ -30,11 +30,21 @@ const INITIAL: Integration[] = [
   { id: "wh", name: "Webhooks", descJa: "イベントをエンドポイントへ", descEn: "Events to your endpoints", icon: Webhook, tint: "text-amber-400", on: false },
 ];
 
-function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+function Toggle({
+  on,
+  onClick,
+  label,
+}: {
+  on: boolean;
+  onClick: () => void;
+  /** 中身が空のスイッチなので、どのサービスの切替かを外から渡す */
+  label: string;
+}) {
   return (
     <button
       type="button"
       role="switch"
+      aria-label={label}
       aria-checked={on}
       onClick={onClick}
       className={cn(
@@ -95,6 +105,7 @@ export default function IntegrationList() {
               </div>
               <Toggle
                 on={it.on}
+                label={it.name}
                 onClick={() =>
                   setItems((arr) =>
                     arr.map((x) => (x.id === it.id ? { ...x, on: !x.on } : x))

@@ -29,9 +29,9 @@ const ROUTES = [
     ssr: "home",
     robots: "index, follow",
     url: `${ORIGIN}/`,
-    title: "LP Section Studio — コピペできるLPセクション＆3Dコンポーネント 880+",
+    title: "LP Section Studio — React が要らない現場でも使える UI 部品 880",
     description:
-      "コピペできる本物のLPセクションと、動く3Dパーツ。880種類以上の React / TypeScript コンポーネントを検索して、選んで、貼るだけ。完全自己完結・追加依存ゼロ、商用利用OK、バニラHTML書き出し対応。",
+      "880 コンポーネント。うち 397 個は React も Babel も含まない静的 HTML として書き出せるので、PHP・Rails・Hugo・WordPress にもそのまま貼れます。全件が a11y・コントラスト・キーボード・横スクロールの4検査をCIで毎回通過。買い切り ¥9,800。",
   },
   {
     route: "pricing",
@@ -39,9 +39,9 @@ const ROUTES = [
     ssr: "pricing",
     robots: "index, follow",
     url: `${ORIGIN}/pricing`,
-    title: "料金プラン — LP Section Studio",
+    title: "料金 — 買い切り ¥9,800 | LP Section Studio",
     description:
-      "Free（¥0）から始めて、必要なときに。Pro $20 / Studio $100。880+ のLPセクションと3Dコンポーネントを商用利用OKで。いつでも解約可能。",
+      "月額はありません。買い切り ¥9,800 で 880 コンポーネントすべて。うち 397 個は React 不要の静的 HTML として使えます。a11y・コントラスト・キーボード・横スクロールの4検査をCIで毎回通過。無料版は MCP から100個。",
   },
   {
     route: "studio",

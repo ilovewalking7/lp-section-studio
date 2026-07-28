@@ -44,7 +44,7 @@ export default function ScaleFocusSlider() {
   }, [playing]);
 
   return (
-    <div className="w-full bg-background py-12">
+    <div className="w-full bg-background py-12 overflow-x-hidden">
       <div
         className="relative mx-auto flex h-60 max-w-3xl items-center justify-center"
         style={{ perspective: "1000px" }}

@@ -124,7 +124,7 @@ export default function FeatureRevealRows() {
     typeof document !== "undefined" &&
     document.documentElement.lang === "en";
   return (
-    <section className="w-full bg-neutral-950 px-4 py-20 text-white sm:px-8">
+    <section className="w-full overflow-x-hidden bg-neutral-950 px-4 py-20 text-white sm:px-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-14 max-w-xl">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">

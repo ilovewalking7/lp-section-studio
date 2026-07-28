@@ -95,8 +95,8 @@ const badges = [
 
 export default function PixelBadgeSet() {
   return (
-    <div className="grid place-items-center bg-[#0d0221] p-10">
-      <div className="flex w-[360px] flex-col items-center gap-8">
+    <div className="grid place-items-center bg-[#0d0221] p-5 sm:p-10">
+      <div className="flex w-full max-w-[360px] flex-col items-center gap-8">
         {/* pixel art */}
         <div className="flex items-end gap-6">
           <div

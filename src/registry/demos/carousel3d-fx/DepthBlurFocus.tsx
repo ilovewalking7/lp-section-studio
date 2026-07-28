@@ -31,7 +31,7 @@ export default function DepthBlurFocus() {
     setActive((a) => Math.min(SHOTS.length - 1, Math.max(0, a + d)));
 
   return (
-    <div className="w-full bg-background py-12">
+    <div className="w-full bg-background py-12 overflow-x-hidden">
       <div
         className="relative mx-auto flex h-64 max-w-3xl items-center justify-center"
         style={{ perspective: "1100px" }}

@@ -34,7 +34,9 @@ export default function MoneyBackCard() {
     typeof document !== "undefined" &&
     document.documentElement.lang === "en";
   return (
-    <Card className="relative w-full max-w-sm overflow-visible">
+    <div className="flex w-full justify-center px-5">
+      {/* 保証シールが箱の外に出るので、そのぶんの余白を外側に確保する */}
+      <Card className="relative w-full max-w-sm overflow-visible">
       {/* 保証シール */}
       <div className="absolute -right-3 -top-3 z-10">
         <div className="flex size-[68px] flex-col items-center justify-center rounded-full border-2 border-dashed border-emerald-500/60 bg-emerald-500 text-center text-white shadow-lg">
@@ -94,6 +96,7 @@ export default function MoneyBackCard() {
           {en ? "Cancel anytime in one click" : "解約はいつでもワンクリック"}
         </p>
       </CardFooter>
-    </Card>
+      </Card>
+    </div>
   );
 }

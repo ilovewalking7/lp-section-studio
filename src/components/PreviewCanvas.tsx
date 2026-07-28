@@ -23,7 +23,7 @@ import {
   FREE_DAILY_COPY_LIMIT,
   getTodayCopies,
   incTodayCopies,
-  isPro,
+  hasFullAccess,
   type PlanId,
 } from "@/lib/plan";
 import type { Lang } from "@/lib/i18n";
@@ -164,7 +164,7 @@ export function PreviewCanvas({
   );
   const [copyBlocked, setCopyBlocked] = useState(false);
 
-  const pro = isPro(plan);
+  const pro = hasFullAccess(plan);
 
   // Free のコピー上限ゲート（Pro/Studio は無制限）
   const onBeforeCopy = () => {

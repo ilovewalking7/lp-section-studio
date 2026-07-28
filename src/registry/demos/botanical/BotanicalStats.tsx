@@ -76,22 +76,25 @@ export default function BotanicalStats() {
           </h2>
         </div>
 
-        <dl className="mt-12 grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4">
+        {/* dl は「dt → dd の順の組」しか持てず、間にアイコンの span も置けない。
+            見た目はアイコン → 数値 → ラベルの順なので dl とは噛み合わない。
+            無理に合わせると読み上げ順が崩れるため、ここは通常のリストにする。 */}
+        <ul className="mt-12 grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4">
           {stats.map(({ icon: Icon, value, label, labelEn, suffix, suffixEn }) => (
-            <div key={labelEn} className="text-center">
+            <li key={labelEn} className="text-center">
               <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#f3f1e7]/12 text-[#cdd4b6]">
-                <Icon className="size-6" />
+                <Icon className="size-6" aria-hidden="true" />
               </span>
-              <dd className="mt-4 font-serif text-4xl font-medium leading-none">
+              <p className="mt-4 font-serif text-4xl font-medium leading-none">
                 {value}
                 <span className="text-xl text-[#cdd4b6]">{en ? suffixEn : suffix}</span>
-              </dd>
-              <dt className="mt-2 text-xs tracking-wide text-[#f3f1e7]/80">
+              </p>
+              <p className="mt-2 text-xs tracking-wide text-[#f3f1e7]/80">
                 {en ? labelEn : label}
-              </dt>
-            </div>
+              </p>
+            </li>
           ))}
-        </dl>
+        </ul>
       </div>
     </section>
   );

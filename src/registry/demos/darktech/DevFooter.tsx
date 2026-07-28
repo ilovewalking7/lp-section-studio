@@ -88,10 +88,15 @@ export default function DevFooter() {
                 : "開発者がより速く出荷するためのエッジネイティブなプラットフォーム。"}
             </p>
             <div className="mt-5 flex gap-2">
-              {[Github, Twitter, MessageCircle].map((Icon, i) => (
+              {[
+                { Icon: Github, label: "GitHub" },
+                { Icon: Twitter, label: "X (Twitter)" },
+                { Icon: MessageCircle, label: "Discord" },
+              ].map(({ Icon, label }) => (
                 <a
-                  key={i}
+                  key={label}
                   href="#"
+                  aria-label={label}
                   className="grid size-9 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-100"
                 >
                   <Icon className="size-4" />
