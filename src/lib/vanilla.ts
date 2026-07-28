@@ -1,5 +1,6 @@
 import { createElement, type ComponentType } from "react";
 import utilsRaw from "./utils.ts?raw";
+import { HEAD_TOKEN_INJECTION } from "./vanillaHead.generated";
 
 /** UI プリミティブの生ソース（name → source）。dynamic 版で同梱する。 */
 const uiRaw = import.meta.glob("../components/ui/*.tsx", {
@@ -59,7 +60,16 @@ export function formatHtml(html: string): string {
   return out.join("\n");
 }
 
-/** そのまま保存して開ける完結HTML（Tailwind CDN 付き）に包む */
+/**
+ * そのまま保存して開ける完結HTML（Tailwind CDN + デザイントークン付き）に包む。
+ *
+ * bg-card / text-muted-foreground などは**このプロジェクト固有のトークン**で、
+ * 素の Tailwind には存在しない。CDN を1行読むだけでは一切当たらず、
+ * bg-card は transparent、text-muted-foreground は真っ黒になる。
+ * そこで書き出しの源流で HEAD_TOKEN_INJECTION を必ず差し込む。
+ * 位置は Tailwind CDN の <script> より**後ろ**（`tailwind.config` は
+ * CDN が定義するグローバルへの代入なので、先に置くと ReferenceError になる）。
+ */
 function wrapDocument(inner: string): string {
   const indented = inner
     .split("\n")
@@ -72,7 +82,7 @@ function wrapDocument(inner: string): string {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- これ1行で Tailwind のクラスがそのまま効く（ビルド不要） -->
     <script src="https://cdn.tailwindcss.com"></script>
-  </head>
+${HEAD_TOKEN_INJECTION}  </head>
   <body>
 ${indented}
   </body>
@@ -277,7 +287,7 @@ export function generateDynamicVanillaHtml(demoSource: string): string {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- Tailwind（ビルド不要） -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- TSX をブラウザ内で変換 -->
+${HEAD_TOKEN_INJECTION}    <!-- TSX をブラウザ内で変換 -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="importmap">
 ${importMap}

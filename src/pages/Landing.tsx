@@ -34,8 +34,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LangToggle } from "@/components/LangToggle";
+import { Phrased } from "@/components/Phrased";
 import { cn } from "@/lib/utils";
 import { getPlans } from "@/lib/plan";
+// 数字だけ要るので、ID 一覧を巻き込まないよう生成物から直接読む（LP の初期チャンク対策）
+import { FREE_EDITION_COUNT } from "@/registry/freeCount";
 import type { Lang } from "@/lib/i18n";
 
 // --- Dogfooding: 実在の本物の3Dコンポーネントをそのまま読み込んで埋め込む ---
@@ -228,11 +232,15 @@ const HERO_THEMES: HeroThemeDef[] = [
 const COPY = {
   ja: {
     brand: "LP Section Studio",
+    // 狭いヘッダー用の短縮ブランド名
+    brandShort: "LP Studio",
     navFeatures: "機能",
     navPricing: "料金",
     navStudio: "スタジオ",
     navOpenStudio: "スタジオを開く",
     ctaTryFree: "無料で使ってみる",
+    // 狭いヘッダー用の短いラベル
+    ctaTryFreeShort: "無料で試す",
     ctaSeePricing: "料金を見る",
     backToTop: "上に戻る",
 
@@ -244,16 +252,15 @@ const COPY = {
 
     heroBadge: "完全自己完結・追加依存ゼロ",
     heroFocalCaption: "ライブ・プレビュー：これも一覧から1クリック",
-    heroTitleLead: "ランディングページは、",
-    heroTitleHighlight: "“組み立てる”時代へ。",
+    heroTitleLead: "ランディング|ページは、",
+    heroTitleHighlight: "“組み立てる”|時代へ。",
     heroSub:
-      "コピペできる本物のLPセクションと、動く3Dパーツ。検索して、選んで、貼るだけ。LPを完成させる部品が、ぜんぶここにある。",
+      "コピペできる本物の|LPセクションと、|動く3Dパーツ。|検索して、選んで、貼るだけ。|LPを完成させる部品が、|ぜんぶここにある。",
 
     statSections: "セクション",
     statStyles: "スタイル",
     statCategories: "カテゴリ",
-    statPriceValue: "¥0",
-    statPriceLabel: "から使える",
+    statFreeLabel: "無料で使える数",
 
     trustNote: "完全自己完結・追加依存ゼロ",
     trustTested: "全{n}件テスト済み（エラーゼロ）",
@@ -270,8 +277,8 @@ const COPY = {
     ],
 
     howBadge: "使い方",
-    howHeading: "3ステップで、貼るだけ。",
-    howSub: "迷う余地をなくしました。選んで、取り込んで、貼る。それだけ。",
+    howHeading: "3ステップで、|貼るだけ。",
+    howSub: "迷う余地をなくしました。|選んで、取り込んで、貼る。|それだけ。",
     how: [
       {
         title: "一覧から選ぶ",
@@ -289,10 +296,10 @@ const COPY = {
     howStepTags: ["コピペ", "npx shadcn add", "バニラHTML"],
 
     dogfoodBadge: "ライブ・プレビュー",
-    dogfoodHeading: "動く。本物の3D。ぜんぶ一覧から。",
-    dogfoodBodyA: "下に並んでいるのは、すべてライブラリ内の",
-    dogfoodBodyStrong: "本物の3Dコンポーネント",
-    dogfoodBodyB: "。このLP自体が、この一覧でできています。",
+    dogfoodHeading: "動く。|本物の3D。|ぜんぶ一覧から。",
+    dogfoodBodyA: "下に並んでいるのは、|すべてライブラリ内の",
+    dogfoodBodyStrong: "本物の3Dコンポーネント。",
+    dogfoodBodyB: "このLP自体が、|この一覧でできています。",
     dogfoodCaption: "ライブ・プレビュー：これも一覧から1クリックで使えます",
 
     dogfood: {
@@ -306,9 +313,9 @@ const COPY = {
     },
 
     perfBadge: "パフォーマンス",
-    perfHeading: "速い。軽い。SEOに強い。",
+    perfHeading: "速い。軽い。|SEOに強い。",
     perfSub:
-      "CSS中心の設計だから、フレームワーク無しでも動く。中身はHTMLにあるので、そのままクローラブル。",
+      "CSS中心の設計だから、|フレームワーク無しでも動く。|中身はHTMLにあるので、|そのままクローラブル。",
     perfCards: [
       {
         title: "フレームワーク不要で軽い",
@@ -341,8 +348,9 @@ const COPY = {
       "※ 動く3DはCSSアニメ中心。canvas等のJS必須パーツも中身はHTMLにあるので“プログレッシブ・エンハンス”。動的バニラ（React再現）は別用途です。",
 
     featuresBadge: "選ばれる理由",
-    featuresHeading: "なぜ、これを選ぶのか。",
-    featuresSub: "速さと品質を両立し、人の「決め手」に寄り添うように作られています。",
+    featuresHeading: "なぜ、|これを選ぶのか。",
+    featuresSub:
+      "速さと品質を両立し、|人の「決め手」に|寄り添うように作られています。",
     features: [
       {
         title: "時間を買う",
@@ -371,8 +379,9 @@ const COPY = {
     ],
 
     stylesBadge: "スタイル＆3D",
-    stylesHeading: "13の世界観＋動く3D。",
-    stylesSub: "同じセクションでも、テーマを変えればブランドの空気がまるごと変わる。",
+    stylesHeading: "13の世界観＋|動く3D。",
+    stylesSub:
+      "同じセクションでも、|テーマを変えれば|ブランドの空気がまるごと変わる。",
     styleNames: [
       "和風",
       "洋風",
@@ -391,7 +400,7 @@ const COPY = {
     style3dName: "3Dアニメ",
 
     testimonialsBadge: "評価",
-    testimonialsHeading: "AIも、その品質を認めた。",
+    testimonialsHeading: "AIも、|その品質を認めた。",
     testimonials: [
       {
         quote:
@@ -404,8 +413,9 @@ const COPY = {
     ],
 
     pricingBadge: "料金",
-    pricingHeading: "¥0からはじめて、必要なときに。",
-    pricingSub: "個人の試用から、チームの制作現場まで。3つのプランで段階的に。",
+    pricingHeading: "¥0からはじめて、|必要なときに。",
+    pricingSub:
+      "個人の試用から、|チームの制作現場まで。|無料版と買い切り版の|2つだけです。",
     pricingRecommended: "おすすめ",
     pricingChoose: "選ぶ",
     pricingSeeDetails: "料金の詳細を見る",
@@ -440,9 +450,9 @@ const COPY = {
     ],
 
     finalBadge: "登録不要・今すぐ",
-    finalHeading: "次の LP、今日のうちに公開しよう。",
+    finalHeading: "次の LP、|今日のうちに|公開しよう。",
     finalSubA: "登録不要で、すぐに ",
-    finalSubB: " のセクションと3Dをライブプレビュー。",
+    finalSubB: " のセクションと3Dを|ライブプレビュー。",
 
     footerTaglineLead: "LP を完成させる、",
     footerTaglineTail: " のコピペ可能なセクションと3Dパーツ。",
@@ -457,11 +467,13 @@ const COPY = {
   },
   en: {
     brand: "LP Section Studio",
+    brandShort: "LP Studio",
     navFeatures: "Features",
     navPricing: "Pricing",
     navStudio: "Studio",
     navOpenStudio: "Open Studio",
     ctaTryFree: "Try it free",
+    ctaTryFreeShort: "Try free",
     ctaSeePricing: "See pricing",
     backToTop: "Back to top",
 
@@ -481,8 +493,7 @@ const COPY = {
     statSections: "sections",
     statStyles: "styles",
     statCategories: "categories",
-    statPriceValue: "Free",
-    statPriceLabel: "to start",
+    statFreeLabel: "free to use",
 
     trustNote: "Fully self-contained · zero extra deps",
     trustTested: "All {n} tested (zero errors)",
@@ -638,7 +649,7 @@ const COPY = {
     pricingBadge: "Pricing",
     pricingHeading: "Start free, upgrade when you need to.",
     pricingSub:
-      "From solo trials to a team's production floor — three plans, step by step.",
+      "From solo trials to a team's production floor — just two: free and pay-once.",
     pricingRecommended: "Recommended",
     pricingChoose: "Choose",
     pricingSeeDetails: "See full pricing",
@@ -696,11 +707,14 @@ const COPY = {
 export default function Landing({
   stats,
   lang = "ja",
+  setLang,
   onOpenStudio,
   onOpenPricing,
 }: {
   stats: { components: number; styles: number; categories: number };
   lang?: Lang;
+  /** 渡されたときだけヘッダーに言語切替を出す（テスト等の簡易利用では省略可） */
+  setLang?: (l: Lang) => void;
   onOpenStudio: () => void;
   onOpenPricing: () => void;
 }) {
@@ -758,6 +772,7 @@ export default function Landing({
   const cComponents = useCountUp(stats.components, reduced);
   const cStyles = useCountUp(stats.styles, reduced);
   const cCategories = useCountUp(stats.categories, reduced);
+  const cFree = useCountUp(FREE_EDITION_COUNT, reduced);
 
   const themeLabel = (id: HeroTheme): string =>
     id === "aurora"
@@ -770,7 +785,7 @@ export default function Landing({
     { key: "components", value: `${cComponents}+`, label: t.statSections },
     { key: "styles", value: `${cStyles}`, label: t.statStyles },
     { key: "categories", value: `${cCategories}`, label: t.statCategories },
-    { key: "price", value: t.statPriceValue, label: t.statPriceLabel },
+    { key: "free", value: `${cFree}`, label: t.statFreeLabel },
   ];
 
   /* ----- データ ----- */
@@ -996,13 +1011,22 @@ export default function Landing({
             scrolled ? "h-14" : "h-16"
           )}
         >
-          <a href="#top" className="group flex items-center gap-2 font-bold tracking-tight">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-white transition-transform duration-300 group-hover:rotate-6 motion-reduce:transition-none motion-reduce:group-hover:rotate-0">
+          <a
+            href="#top"
+            className="group flex min-w-0 items-center gap-2 font-bold tracking-tight"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-white transition-transform duration-300 group-hover:rotate-6 motion-reduce:transition-none motion-reduce:group-hover:rotate-0">
               <Boxes className="h-4 w-4" />
             </span>
-            <span className="text-base sm:text-lg">{t.brand}</span>
+            {/* 狭い画面では短縮名。フル名と CTA と言語切替を1行に収めるため */}
+            <span className="truncate text-base sm:hidden">
+              {t.brandShort}
+            </span>
+            <span className="hidden truncate sm:inline sm:text-lg">
+              {t.brand}
+            </span>
           </a>
-          <div className="flex items-center gap-1 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-3">
             <a
               href="#features"
               className="hidden rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
@@ -1022,8 +1046,11 @@ export default function Landing({
             >
               {t.navStudio}
             </a>
-            <Button onClick={onOpenStudio} className="gap-2">
-              {t.ctaTryFree}
+            {/* 言語切替はヘッダー内に置く（固定配置だと CTA に重なる） */}
+            {setLang && <LangToggle lang={lang} setLang={setLang} />}
+            <Button onClick={onOpenStudio} className="gap-2 px-3 sm:px-4">
+              <span className="sm:hidden">{t.ctaTryFreeShort}</span>
+              <span className="hidden sm:inline">{t.ctaTryFree}</span>
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -1079,11 +1106,12 @@ export default function Landing({
             className="pointer-events-none absolute inset-0 -z-10 transition-opacity duration-300"
           />
 
-          <div className="mx-auto max-w-6xl px-4 pb-16 pt-20 text-center sm:px-6 sm:pb-24 sm:pt-28">
+          {/* 狭い画面では上余白を詰め、ファーストビューに見出しとCTAを収める */}
+          <div className="mx-auto max-w-6xl px-4 pb-14 pt-10 text-center sm:px-6 sm:pb-24 sm:pt-20 lg:pt-28">
             <Badge
               variant="secondary"
               className={cn(
-                "mb-6 gap-1.5 px-3 py-1 text-xs",
+                "mb-5 gap-1.5 px-3 py-1 text-xs",
                 theme.dark && "border-white/15 bg-white/10 text-slate-100"
               )}
             >
@@ -1091,24 +1119,27 @@ export default function Landing({
               {t.heroBadge}
             </Badge>
 
-            <h1 className="mx-auto max-w-3xl text-5xl font-bold leading-[1.05] tracking-tight sm:text-7xl">
-              {t.heroTitleLead}
-              <br className="hidden sm:block" />
-              <span className={cn("lp-shimmer inline-block", theme.headline)}>
-                {t.heroTitleHighlight}
-              </span>
+            {/* 見出しは文節単位（Phrased）で折り返す。単語途中で切れないよう
+                max-w も1行が収まる幅にしてある。 */}
+            <h1 className="mx-auto max-w-4xl text-4xl font-bold leading-[1.15] tracking-tight sm:text-6xl sm:leading-[1.08] lg:text-7xl">
+              <Phrased text={t.heroTitleLead} />
+              <br />
+              <Phrased
+                text={t.heroTitleHighlight}
+                className={cn("lp-shimmer", theme.headline)}
+              />
             </h1>
 
             <p
               className={cn(
-                "mx-auto mt-6 max-w-2xl text-balance text-lg sm:text-xl",
+                "mx-auto mt-5 max-w-2xl text-balance text-base sm:mt-6 sm:text-xl",
                 theme.dark ? "text-slate-300" : "text-muted-foreground"
               )}
             >
-              {stats.components}+ / {t.heroSub}
+              {stats.components}+ / <Phrased text={t.heroSub} />
             </p>
 
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button
                 size="lg"
                 onClick={onOpenStudio}
@@ -1254,9 +1285,11 @@ export default function Landing({
               {t.howBadge}
             </Badge>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              {t.howHeading}
+              <Phrased text={t.howHeading} />
             </h2>
-            <p className="mt-4 text-muted-foreground">{t.howSub}</p>
+            <p className="mt-4 text-muted-foreground">
+              <Phrased text={t.howSub} />
+            </p>
           </Reveal>
 
           <ol className="mt-14 grid gap-6 md:grid-cols-3">
@@ -1299,12 +1332,12 @@ export default function Landing({
                 {t.dogfoodBadge}
               </Badge>
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-                {t.dogfoodHeading}
+                <Phrased text={t.dogfoodHeading} />
               </h2>
               <p className="mt-4 text-muted-foreground">
-                {t.dogfoodBodyA}
-                <strong>{t.dogfoodBodyStrong}</strong>
-                {t.dogfoodBodyB}
+                <Phrased text={t.dogfoodBodyA} />
+                <strong className="inline-block">{t.dogfoodBodyStrong}</strong>
+                <Phrased text={t.dogfoodBodyB} />
               </p>
             </Reveal>
 
@@ -1358,9 +1391,11 @@ export default function Landing({
               {t.perfBadge}
             </Badge>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              {t.perfHeading}
+              <Phrased text={t.perfHeading} />
             </h2>
-            <p className="mt-4 text-balance text-muted-foreground">{t.perfSub}</p>
+            <p className="mt-4 text-balance text-muted-foreground">
+              <Phrased text={t.perfSub} />
+            </p>
           </Reveal>
 
           <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -1453,9 +1488,11 @@ export default function Landing({
               {t.featuresBadge}
             </Badge>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              {t.featuresHeading}
+              <Phrased text={t.featuresHeading} />
             </h2>
-            <p className="mt-4 text-muted-foreground">{t.featuresSub}</p>
+            <p className="mt-4 text-muted-foreground">
+              <Phrased text={t.featuresSub} />
+            </p>
           </Reveal>
 
           <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -1494,9 +1531,11 @@ export default function Landing({
                 {t.stylesBadge}
               </Badge>
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-                {t.stylesHeading}
+                <Phrased text={t.stylesHeading} />
               </h2>
-              <p className="mt-4 text-muted-foreground">{t.stylesSub}</p>
+              <p className="mt-4 text-muted-foreground">
+                <Phrased text={t.stylesSub} />
+              </p>
             </Reveal>
 
             <ul className="mt-14 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -1547,7 +1586,7 @@ export default function Landing({
               {t.testimonialsBadge}
             </Badge>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              {t.testimonialsHeading}
+              <Phrased text={t.testimonialsHeading} />
             </h2>
           </Reveal>
 
@@ -1594,9 +1633,11 @@ export default function Landing({
                 {t.pricingBadge}
               </Badge>
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-                {t.pricingHeading}
+                <Phrased text={t.pricingHeading} />
               </h2>
-              <p className="mt-4 text-muted-foreground">{t.pricingSub}</p>
+              <p className="mt-4 text-muted-foreground">
+                <Phrased text={t.pricingSub} />
+              </p>
             </Reveal>
 
             <div className="mt-14 grid items-start gap-6 lg:grid-cols-3">
@@ -1707,12 +1748,12 @@ export default function Landing({
                 {t.finalBadge}
               </Badge>
               <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight sm:text-5xl">
-                {t.finalHeading}
+                <Phrased text={t.finalHeading} />
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-white/80">
                 {t.finalSubA}
                 {stats.components}+
-                {t.finalSubB}
+                <Phrased text={t.finalSubB} />
               </p>
               <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Button
