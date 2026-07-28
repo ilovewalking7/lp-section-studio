@@ -15,10 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/CodeBlock";
-import {
-  generateVanillaHtml,
-  generateDynamicVanillaHtml,
-} from "@/lib/vanilla";
+import { generateDynamicVanillaHtml } from "@/lib/vanilla";
 import {
   FREE_DAILY_COPY_LIMIT,
   getTodayCopies,
@@ -42,6 +39,10 @@ const PREVIEW_COPY = {
     advanced: "上級",
     vanillaProTitle: "バニラHTMLエクスポートは Pro 機能です",
     vanillaProBody: "React 不要の素のHTMLを書き出して、どこにでも貼れます。",
+    vanillaFetchError: "静的HTMLを取得できませんでした。",
+    vanillaFetchHint:
+      "`npm run html` で生成されていないか、通信できていない可能性があります。配布パッケージの html/ フォルダに同じファイルが入っています。",
+    retry: "再試行",
     upgrade: "Pro にアップグレード",
     limitReached: `本日のコピー上限（${FREE_DAILY_COPY_LIMIT}回）に達しました。`,
     makeUnlimited: "無制限にする",
@@ -57,6 +58,10 @@ const PREVIEW_COPY = {
     advanced: "Advanced",
     vanillaProTitle: "Vanilla HTML export is a Pro feature",
     vanillaProBody: "Export plain HTML (no React) and paste it anywhere.",
+    vanillaFetchError: "Could not fetch the static HTML.",
+    vanillaFetchHint:
+      "It may not have been generated (`npm run html`) or the request failed. The same file ships in the html/ folder of the package.",
+    retry: "Retry",
     upgrade: "Upgrade to Pro",
     limitReached: `Daily copy limit (${FREE_DAILY_COPY_LIMIT}) reached.`,
     makeUnlimited: "Go unlimited",
@@ -72,6 +77,22 @@ const VIEWPORTS: Record<Viewport, { width: string; icon: typeof Monitor }> = {
   tablet: { width: "768px", icon: Tablet },
   desktop: { width: "100%", icon: Monitor },
 };
+
+/**
+ * 静的版のバニラHTMLは**生成済みのものを取りに行く**（その場で作らない）。
+ *
+ * 埋め込む CSS は「その HTML 1枚だけを content にした Tailwind の出力」なので、
+ * ブラウザ上では作れない（Tailwind をブラウザでコンパイルできない）。
+ * `npm run html` が作った `public/html/<id>.html` が唯一の生成元で、
+ * ここも配布 ZIP の `html/` も同じファイルを指す。作る場所を1つにしておくと、
+ * 「スタジオでコピーしたHTML」と「ZIPに入っているHTML」の食い違いが原理的に起きない。
+ */
+async function fetchStaticHtml(id: string): Promise<string> {
+  const url = `${import.meta.env.BASE_URL}html/${id}.html`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} (${url})`);
+  return res.text();
+}
 
 function Spinner() {
   return (
@@ -163,6 +184,7 @@ export function PreviewCanvas({
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [source, setSource] = useState<string | null>(null);
   const [vanilla, setVanilla] = useState<string | null>(null);
+  const [vanillaError, setVanillaError] = useState<string | null>(null);
   const [vanillaMode, setVanillaMode] = useState<"static" | "dynamic">(
     "static"
   );
@@ -191,6 +213,7 @@ export function PreviewCanvas({
   useEffect(() => {
     setSource(null);
     setVanilla(null);
+    setVanillaError(null);
   }, [entry.id]);
 
   // コードタブを開いた時だけソース取得
@@ -205,30 +228,34 @@ export function PreviewCanvas({
     };
   }, [tab, source, entry]);
 
-  // モード切替（静的⇄動的）で再生成させる
+  // モード切替（静的⇄動的）で作り直させる
   useEffect(() => {
     setVanilla(null);
+    setVanillaError(null);
   }, [vanillaMode]);
 
-  // バニラタブを開いた時だけHTMLを生成（Pro 限定機能）
+  // バニラタブを開いた時だけHTMLを用意する（Pro 限定機能）。
+  // 静的版は生成済みファイルの取得、動的版はその場で組み立て。
   useEffect(() => {
-    if (tab !== "vanilla" || vanilla !== null || !pro) return;
+    if (tab !== "vanilla" || vanilla !== null || vanillaError !== null || !pro) {
+      return;
+    }
     let alive = true;
     const build =
       vanillaMode === "dynamic"
         ? entry.loadSource().then((src) => generateDynamicVanillaHtml(src))
-        : entry.load().then((Comp) => generateVanillaHtml(Comp));
+        : fetchStaticHtml(entry.id);
     build
       .then((html) => {
         if (alive) setVanilla(html);
       })
       .catch((e: unknown) => {
-        if (alive) setVanilla(`<!-- 生成エラー: ${(e as Error).message} -->`);
+        if (alive) setVanillaError((e as Error).message);
       });
     return () => {
       alive = false;
     };
-  }, [tab, vanilla, vanillaMode, entry]);
+  }, [tab, vanilla, vanillaError, vanillaMode, entry]);
 
   return (
     <section className="space-y-3">
@@ -404,23 +431,43 @@ export function PreviewCanvas({
               )
             ) : lang === "ja" ? (
               <span>
-                React 不要の<b className="text-foreground">素のHTML</b>（Tailwind
-                CDN込み）。保存してそのまま開けます。lucide
-                はインラインSVG化済み。
+                React 不要の<b className="text-foreground">素のHTML</b>。CSS は
+                この1枚ぶんだけコンパイルして
+                <b className="text-foreground">埋め込み済み</b>で、
+                <b className="text-foreground">外部への通信は一切ありません</b>
+                （オフラインでも同じ見た目）。lucide はインラインSVG化済み。
                 <b className="text-foreground">初期状態のスナップショット</b>
                 なので、カウントダウン等の動きは含まれません（必要なら動的版へ）。
               </span>
             ) : (
               <span>
-                Plain <b className="text-foreground">HTML</b> with no React
-                (Tailwind CDN included) — save and open it directly. lucide icons
-                are inlined as SVG. This is a{" "}
+                Plain <b className="text-foreground">HTML</b> with no React. The
+                CSS is compiled for this one file and{" "}
+                <b className="text-foreground">inlined</b>, so it makes{" "}
+                <b className="text-foreground">no external requests</b> — it looks
+                the same offline. lucide icons are inlined as SVG. This is a{" "}
                 <b className="text-foreground">snapshot of the initial state</b>,
                 so animations aren't included (use Dynamic for those).
               </span>
             )}
           </div>
-          {vanilla === null ? (
+          {vanillaError !== null ? (
+            <div
+              role="alert"
+              className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-4 text-sm"
+            >
+              <p className="font-medium text-amber-600 dark:text-amber-400">
+                {c.vanillaFetchError}
+              </p>
+              <p className="text-xs text-muted-foreground">{c.vanillaFetchHint}</p>
+              <p className="font-mono text-xs text-muted-foreground">
+                {vanillaError}
+              </p>
+              <Button size="sm" onClick={() => setVanillaError(null)}>
+                {c.retry}
+              </Button>
+            </div>
+          ) : vanilla === null ? (
             <Spinner />
           ) : (
             <CodeBlock code={vanilla} onBeforeCopy={onBeforeCopy} />

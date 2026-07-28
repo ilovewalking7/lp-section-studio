@@ -1,18 +1,26 @@
 /**
  * build-vanilla-head.mjs
  *
- * バニラHTML書き出し（src/lib/vanilla.ts）が <head> に差し込む
- * **デザイントークン定義**を `src/lib/vanillaHead.generated.ts` に生成する。
+ * **動的版**のバニラHTML書き出し（src/lib/vanilla.ts の
+ * generateDynamicVanillaHtml）が <head> に差し込む**デザイントークン定義**を
+ * `src/lib/vanillaHead.generated.ts` に生成する。
+ *
+ * なぜ動的版だけなのか:
+ *   静的版（public/html/<id>.html）は scripts/build-static-html.mjs が
+ *   1件ぶんの Tailwind を実際にコンパイルして <style> に埋め込むので、CDN も
+ *   この設定も要らない。動的版は esm.sh + Babel でブラウザ内変換する別機能で、
+ *   CDN 依存が本質的に残る。そちらでは Play CDN に設定を渡す必要がある。
  *
  * なぜ生成物にするのか:
  *   bg-card / text-muted-foreground / bg-background などはこのプロジェクト固有の
  *   トークンで、素の Tailwind には存在しない（tailwind.config.js の theme.extend と
- *   src/index.css の :root / .dark が定義の出所）。書き出したHTMLが
- *   cdn.tailwindcss.com を1行読むだけだと、これらのクラスは一切当たらず
- *   bg-card → transparent、text-muted-foreground → 真っ黒になる（880件中430件が該当）。
+ *   src/index.css の :root / .dark が定義の出所）。cdn.tailwindcss.com を1行読む
+ *   だけだと、これらのクラスは一切当たらず bg-card → transparent、
+ *   text-muted-foreground → 真っ黒になる（880件中430件が該当）。
  *   Play CDN 公式の方法どおり `tailwind.config = {...}` と CSS 変数を <head> に
- *   埋めれば直るが、`wrapDocument` はスタジオの書き出し機能としてブラウザ上でも
- *   走るため、実行時にファイルを読むことができない。よってビルド前に定数化する。
+ *   埋めれば直るが、`generateDynamicVanillaHtml` はスタジオの書き出し機能として
+ *   ブラウザ上でも走るため、実行時にファイルを読むことができない。
+ *   よってビルド前に定数化する。
  *
  *   （src/index.css を `?raw` で直接 import する手もあるが、vitest は既定で
  *    CSS の import を空文字に差し替えるためテスト環境で成立しない。
@@ -115,10 +123,11 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
 // 元データ: tailwind.config.js（darkMode / theme.extend）と src/index.css（:root / .dark）
 
 /**
- * バニラHTML書き出しの <head> に差し込むデザイントークン定義。
- * 素の Tailwind に無い bg-card / text-muted-foreground などを CDN 版でも
+ * **動的版**バニラHTML書き出しの <head> に差し込むデザイントークン定義。
+ * 素の Tailwind に無い bg-card / text-muted-foreground などを Play CDN でも
  * 解決させるための設定（Play CDN 公式の方法）。
  * Tailwind CDN の <script> より**後ろ**に置くこと。
+ * 静的版は実CSSを埋め込むので、こちらは使わない。
  */
 export const HEAD_TOKEN_INJECTION = \`${escapeTemplate(injection)}\`;
 `

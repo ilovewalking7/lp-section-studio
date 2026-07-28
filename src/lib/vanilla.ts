@@ -61,14 +61,26 @@ export function formatHtml(html: string): string {
 }
 
 /**
- * そのまま保存して開ける完結HTML（Tailwind CDN + デザイントークン付き）に包む。
+ * コンパイル済み Tailwind CSS を差し込む目印。
  *
- * bg-card / text-muted-foreground などは**このプロジェクト固有のトークン**で、
- * 素の Tailwind には存在しない。CDN を1行読むだけでは一切当たらず、
- * bg-card は transparent、text-muted-foreground は真っ黒になる。
- * そこで書き出しの源流で HEAD_TOKEN_INJECTION を必ず差し込む。
- * 位置は Tailwind CDN の <script> より**後ろ**（`tailwind.config` は
- * CDN が定義するグローバルへの代入なので、先に置くと ReferenceError になる）。
+ * `scripts/build-static-html.mjs` がこの1行を `<style>…</style>` に置き換える。
+ * 置き換え前の HTML は**未完成**（スタイルが一切当たらない）なので、そのまま
+ * 人に渡してはいけない。目印の文字列はハーネス（src/overflow-entry.tsx）が
+ * `window.__cssSlot` として書き出し側へ渡すので、定義はここ1箇所だけでよい。
+ */
+export const CSS_SLOT = "<!--__COMPILED_TAILWIND_CSS__-->";
+
+/**
+ * そのまま保存して開ける完結HTMLに包む。
+ *
+ * かつては `cdn.tailwindcss.com` を1行読ませ、bg-card などの固有トークンは
+ * `tailwind.config` として渡していた。だが「1枚のHTMLで完結」と言いながら
+ * 開くたびに外部へ取りに行く作りで、オフライン・社内網・CDN障害で色が消える。
+ * Tailwind 自身も Play CDN を本番非推奨としている。
+ *
+ * そこで CSS は**書き出し時にこの HTML 専用にコンパイルして埋め込む**。
+ * ここでは埋め込み位置の目印だけを置き、実CSSは build-static-html.mjs が入れる
+ * （ブラウザ上では Tailwind をコンパイルできないため、源流では持てない）。
  */
 function wrapDocument(inner: string): string {
   const indented = inner
@@ -80,9 +92,8 @@ function wrapDocument(inner: string): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- これ1行で Tailwind のクラスがそのまま効く（ビルド不要） -->
-    <script src="https://cdn.tailwindcss.com"></script>
-${HEAD_TOKEN_INJECTION}  </head>
+    ${CSS_SLOT}
+  </head>
   <body>
 ${indented}
   </body>
@@ -91,9 +102,15 @@ ${indented}
 
 /**
  * React コンポーネントを「素のHTML」に変換する。
- * - Tailwind クラスは保持（CDN でそのまま動く）
+ * - Tailwind クラスは保持（CSS は書き出し時にコンパイルして埋め込む）
  * - lucide アイコンはインライン SVG に展開される
  * - 初期レンダリングの**静的スナップショット**（useState/useEffect の動きは含まない）
+ *
+ * 呼び出し元は `src/overflow-entry.tsx`（`window.__staticHtml`）だけ。
+ * これを `scripts/build-static-html.mjs` が Playwright 越しに呼び、返ってきた
+ * HTML に実CSSを差し込んで `public/html/<id>.html` を作る。スタジオの書き出しUIは
+ * その生成済みファイルを取りに行くので、この関数を直接は呼ばない
+ * （同じ成果物を2経路で作ると必ず食い違うため、作る場所を1つにしている）。
  */
 export async function generateVanillaHtml(Comp: ComponentType): Promise<string> {
   const server = (await import(

@@ -12,16 +12,16 @@
  *   1. 想定したディレクトリと件数が揃っているか
  *   2. 顧客に渡してはいけないもの（node_modules/.git/.env 等）が入っていないか
  *   3. README と LICENSE が入っていて、両方の版のライセンスが読み取れるか
- *   4. 静的 HTML を無作為に数件、実ブラウザで開いて描画とスタイルを実測
+ *   4. 静的 HTML を無作為に数件、**外部通信を遮断した**実ブラウザで開いて色を実測
  *   5. スタジオが HTTP 越しに開けるか
  *
- * 4 について: この HTML は cdn.tailwindcss.com を読む作りだが、検査環境から
- * 外部 CDN には出られない。そこで CDN の代わりに、HTML が宣言している
- * tailwind.config と同じ設定でローカルに組んだ Tailwind を差し込む。
- * トークンの値（--card など）は HTML 自身が持つ <style> から来るので、
- * 「配布物に埋め込んだ設定が効いているか」はこの方法で確かめられる。
+ * 4 について: 「注入した文字列があるか」を見ても、色が出るかは分からない。
+ * CSS は書き出し時にコンパイルして埋め込んであるので、ブラウザをオフラインにし
+ * 外部リクエストを abort した上で getComputedStyle を読む。bg-card が透明でなく、
+ * text-muted-foreground が真っ黒でないことを実測できて初めて「自己完結している」
+ * と言える。
  */
-import { existsSync, mkdtempSync, rmSync, readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve, relative } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
@@ -118,21 +118,45 @@ for (const [re, label] of forbidden) {
   const hit = all.filter((f) => re.test(f));
   check(hit.length === 0, `${label} が無い`, hit.length ? `${hit.length} 件混入: ${hit.slice(0, 3).join(", ")}` : "");
 }
-// Vite が public/ を丸ごと dist/ にコピーするので、放っておくと registry/ と
-// html/ が studio/ の中に二重で入る（12MB の無駄＋注入前の古い HTML が混ざる）
+// Vite が public/ を丸ごと dist/ にコピーするので、放っておくと registry/ が
+// studio/ の中に二重で入る（6MB の無駄）
 check(!existsSync(join(PKG, "studio/r")), "studio/r が無い（registry/ と重複するため）");
-check(!existsSync(join(PKG, "studio/html")), "studio/html が無い（html/ と重複するため）");
-// html/ の全件に Tailwind 設定が入っているか（1件でも漏れると色が出ない）
+// 逆に studio/html は要る。スタジオのバニラHTML書き出しは、その場で作らず
+// /html/<id>.html を取りに行く（ブラウザでは Tailwind をコンパイルできない）。
+check(existsSync(join(PKG, "studio/html/index.json")),
+  "studio/html がある（バニラHTML書き出しが取りに行く先）");
+
+// html/ の全件で CSS が埋まっていて、外部を読む記述が残っていないか。
+// 1件でも漏れるとその部品だけ色が出ない／オフラインで壊れる。
+/** 外部からリソースを読む記述。<a href> や SVG の名前空間 URL は当たらない。 */
+const EXTERNAL_RESOURCE =
+  /<script[^>]+\bsrc\s*=\s*["']\s*(?:https?:)?\/\/|<link[^>]+\bhref\s*=\s*["']\s*(?:https?:)?\/\/|<(?:img|iframe|video|audio|source|embed)[^>]+\bsrc\s*=\s*["']\s*(?:https?:)?\/\/|@import[^;]*(?:https?:)?\/\/|url\(\s*["']?(?:https?:)?\/\//i;
+/**
+ * コンパイル済みの実CSSが埋まっているか。
+ * `--tw-border-spacing-x` は Tailwind の preflight が必ず出す変数なので、
+ * 部品が持つ独自の <style>（@keyframes 用など）と取り違えない。
+ */
+const hasCompiledCss = (html) =>
+  html.includes("<style>") &&
+  html.includes("--tw-border-spacing-x") &&
+  html.includes("--card:");
+const selfContained = (html) => hasCompiledCss(html) && !EXTERNAL_RESOURCE.test(html);
+
 const htmlFiles = readdirSync(join(PKG, "html")).filter((f) => f.endsWith(".html"));
-const notInjected = htmlFiles.filter(
-  (f) => !readFileSync(join(PKG, "html", f), "utf-8").includes("tailwind.config")
+const notEmbedded = htmlFiles.filter(
+  (f) => !hasCompiledCss(readFileSync(join(PKG, "html", f), "utf-8"))
 );
-check(notInjected.length === 0, "html  全件に Tailwind のトークン設定が入っている",
-  notInjected.length ? `${notInjected.length} 件が未注入: ${notInjected.slice(0, 3).join(", ")}` : `${htmlFiles.length} 件`);
+check(notEmbedded.length === 0, "html  全件に CSS が埋め込まれている",
+  notEmbedded.length ? `${notEmbedded.length} 件が未埋め込み: ${notEmbedded.slice(0, 3).join(", ")}` : `${htmlFiles.length} 件`);
+const external = htmlFiles.filter((f) =>
+  EXTERNAL_RESOURCE.test(readFileSync(join(PKG, "html", f), "utf-8"))
+);
+check(external.length === 0, "html  外部を読む記述が1つも無い（CDN・Webフォント含む）",
+  external.length ? `${external.length} 件に残存: ${external.slice(0, 3).join(", ")}` : `${htmlFiles.length} 件`);
 // MCP が返す HTML も同じであること
-const mcpNotInjected = mcpData.items.filter((i) => i.html && !i.html.includes("tailwind.config")).length;
-check(mcpNotInjected === 0, "mcp  返す HTML にも同じ設定が入っている",
-  mcpNotInjected ? `${mcpNotInjected} 件が未注入` : `${mcpData.items.filter((i) => i.html).length} 件`);
+const mcpBroken = mcpData.items.filter((i) => i.html && !selfContained(i.html)).length;
+check(mcpBroken === 0, "mcp  返す HTML も同じく自己完結している",
+  mcpBroken ? `${mcpBroken} 件が壊れている` : `${mcpData.items.filter((i) => i.html).length} 件`);
 
 // ──────────────────────────────────────────────────────────────────────────
 // 3. README と LICENSE
@@ -153,26 +177,7 @@ if (existsSync(join(PKG, "LICENSE"))) {
 // 4. 静的 HTML を実ブラウザで開く
 // ──────────────────────────────────────────────────────────────────────────
 
-console.log("\n【4】静的 HTML を実ブラウザで開いて実測");
-
-// CDN の代わりに使う Tailwind を、HTML が宣言している設定と同じ内容で組む。
-// 入力 CSS には :root を入れない（トークンは HTML 側の <style> から来るはず）。
-const cssDir = join(work, "_css");
-execFileSync("mkdir", ["-p", cssDir]);
-const tw = resolve(ROOT, "node_modules/.bin/tailwindcss");
-let simCss = null;
-if (existsSync(tw)) {
-  const cfgSrc = readFileSync(resolve(ROOT, "tailwind.config.js"), "utf-8")
-    .replace(/content:\s*\[[^\]]*\]/, `content: ["${join(PKG, "html")}/*.html"]`);
-  writeFileSync(join(cssDir, "cdn-sim.config.js"), cfgSrc);
-  writeFileSync(join(cssDir, "in.css"), "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n");
-  execFileSync(tw, ["-c", join(cssDir, "cdn-sim.config.js"), "-i", join(cssDir, "in.css"), "-o", join(cssDir, "cdn-sim.css")],
-    { stdio: ["ignore", "ignore", "ignore"] });
-  simCss = readFileSync(join(cssDir, "cdn-sim.css"), "utf-8");
-  ok("CDN 相当の Tailwind をローカルに構築", `${(simCss.length / 1024).toFixed(0)} KB`);
-} else {
-  ng("tailwindcss が見つからない（npm install が必要）");
-}
+console.log("\n【4】静的 HTML を外部通信を遮断した実ブラウザで開いて実測");
 
 const { chromium } = await import(resolve(ROOT, "node_modules/playwright/index.mjs"));
 async function launch() {
@@ -185,100 +190,127 @@ async function launch() {
 }
 const browser = await launch();
 
-if (simCss) {
-  // 無作為に選ぶ（毎回違う組み合わせを見るため）。ただし 1 件は必ず
-  // セマンティックトークン（bg-card など）を使うものにする。埋め込んだ
-  // Tailwind 設定が効いているかは、それを使う HTML でしか確かめられない。
-  const standalone = htmlIndex.items.filter((i) => i.standalone);
-  // <head> に埋めた設定の中にもトークン名が出てくるので、<body> だけを見る。
-  // 対象は下の SAMPLE_MEASURE が DOM から拾えるクラスに合わせてある
-  // （拾えないクラスを選んでしまうと、色を実測できず検査にならない）。
-  const usesToken = (id) => {
+{
+  // 標本は無作為（毎回違う組み合わせを見るため）。ただし bg-card を使うもの・
+  // text-muted-foreground を使うものを必ず1件ずつ含める。この2つは素の Tailwind
+  // には無いトークンなので、色が出るかはそれを使う HTML でしか確かめられない。
+  const bodyOf = (id) => {
     const html = readFileSync(join(PKG, "html", `${id}.html`), "utf-8");
-    const body = html.slice(html.indexOf("<body"));
-    return /(?:^|[\s"])(?:bg-(?:card|primary|muted|background)|text-(?:muted-foreground|card-foreground|foreground|primary))(?:[\s"]|$)/.test(
-      body
-    );
+    return html.slice(html.indexOf("<body"));
   };
-  const tokenPool = standalone.filter((i) => usesToken(i.id));
-  const pick = (pool) => pool[Math.floor(Math.random() * pool.length)];
-  const picked = tokenPool.length > 0 ? [pick(tokenPool)] : [];
-  while (picked.length < Math.min(SAMPLES, standalone.length)) {
-    const c = pick(standalone);
-    if (!picked.some((p) => p.id === c.id)) picked.push(c);
-  }
-  ok("トークンを使う standalone HTML", `${tokenPool.length} 件 / ${standalone.length} 件（うち1件を必ず検査）`);
+  /** class 属性を分解して完全一致で見る（bg-card-foreground などを拾わないため） */
+  const usesClass = (id, cls) => {
+    for (const m of bodyOf(id).matchAll(/class="([^"]*)"/g)) {
+      if (m[1].split(/\s+/).includes(cls)) return true;
+    }
+    return false;
+  };
 
-  /** ページの中で走らせる測定式（静的HTML用） */
+  const standalone = htmlIndex.items.filter((i) => i.standalone);
+  const cardPool = standalone.filter((i) => usesClass(i.id, "bg-card"));
+  const mutedPool = standalone.filter((i) => usesClass(i.id, "text-muted-foreground"));
+  const pick = (pool) => pool[Math.floor(Math.random() * pool.length)];
+  const picked = [];
+  const add = (item) => {
+    if (item && !picked.some((p) => p.id === item.id)) picked.push(item);
+  };
+  add(pick(cardPool));
+  add(pick(mutedPool));
+  while (picked.length < Math.min(SAMPLES, standalone.length)) add(pick(standalone));
+  check(cardPool.length > 0 && mutedPool.length > 0, "固有トークンを使う standalone HTML がある",
+    `bg-card ${cardPool.length} 件 / text-muted-foreground ${mutedPool.length} 件 / standalone ${standalone.length} 件`);
+
+  /**
+   * ページの中で走らせる測定式。
+   * 実在の要素に加えて、素の <div class="bg-card text-muted-foreground"> を
+   * 対照として差し込み、そのページの <style> だけでトークンが解けるかを直に測る。
+   *
+   * 対照が意味を持つのは、そのページが実際にそのクラスを使っている時だけ。
+   * CSS は1枚ぶんだけコンパイルしてあるので、使っていないクラスの定義は
+   * （意図どおり）入っていない。使っていないページで対照が透明なのは正常。
+   */
   const SAMPLE_MEASURE = `(() => {
-    const cs = (el) => (el ? getComputedStyle(el) : null);
-    const q = (sel) => document.querySelector(sel);
-    // 背景トークンが無ければ文字色トークンを見る（どちらも素の Tailwind には無い）
-    const bgEl = q('[class*="bg-card"], [class*="bg-primary"], [class*="bg-muted"], [class*="bg-background"]');
-    const fgEl = q('[class*="text-muted-foreground"], [class*="text-card-foreground"], [class*="text-foreground"], [class*="text-primary"]');
-    const tokenEl = bgEl ?? fgEl;
-    const styled = [...document.body.querySelectorAll("*")].filter((el) => {
-      const s = getComputedStyle(el);
-      return s.backgroundColor !== "rgba(0, 0, 0, 0)" || s.borderTopWidth !== "0px" || s.padding !== "0px";
-    });
-    return {
+    const has = (cls) =>
+      [...document.body.querySelectorAll("*")].find((el) => el.classList.contains(cls));
+    const bgEl = has("bg-card");
+    const fgEl = has("text-muted-foreground");
+    const out = {
       elements: document.body.querySelectorAll("*").length,
-      styled: styled.length,
       text: document.body.innerText.trim().length,
       height: document.body.scrollHeight,
       width: document.documentElement.scrollWidth,
-      rootVar: getComputedStyle(document.documentElement).getPropertyValue("--card").trim(),
-      tokenClass: tokenEl
-        ? [...tokenEl.classList].find((c) =>
-            /^(bg-(card|primary|muted|background)|text-(muted-foreground|card-foreground|foreground|primary))$/.test(c)
-          )
-        : null,
-      // 背景トークンなら背景色を、文字色トークンなら文字色を測る
-      tokenBg: tokenEl ? (bgEl ? cs(tokenEl).backgroundColor : cs(tokenEl).color) : null,
-      fontSize: cs(q("h1, h2, h3, p, span, div")).fontSize,
+      styles: document.querySelectorAll("style").length,
+      rules: [...document.styleSheets].reduce((n, s) => { try { return n + s.cssRules.length; } catch { return n; } }, 0),
+      cardVar: getComputedStyle(document.documentElement).getPropertyValue("--card").trim(),
+      bgCard: bgEl ? getComputedStyle(bgEl).backgroundColor : null,
+      mutedFg: fgEl ? getComputedStyle(fgEl).color : null,
     };
+    const probe = document.createElement("div");
+    probe.className = "bg-card text-muted-foreground";
+    probe.textContent = "probe";
+    document.body.appendChild(probe);
+    const ps = getComputedStyle(probe);
+    out.probeBg = ps.backgroundColor;
+    out.probeFg = ps.color;
+    probe.remove();
+    return out;
   })()`;
 
+  const TRANSPARENT = "rgba(0, 0, 0, 0)";
+  const BLACK = "rgb(0, 0, 0)";
+
   for (const item of picked) {
-    // Tailwind 無し／有りの2回測って差を見る。「スタイルが当たっている」を
-    // 絶対値のしきい値で決めると、要素数の少ない部品や SVG の多い部品で
-    // 判定がぶれるので、同じページの前後比較で判断する。
-    const measureOnce = async (withCss) => {
-      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-      // 外部 CDN には出られないので握りつぶし、同等の CSS を後から差し込む
-      await page.route("https://cdn.tailwindcss.com**", (r) =>
-        r.fulfill({ contentType: "text/javascript", body: "" })
-      );
-      await page.goto(`file://${join(PKG, "html", `${item.id}.html`)}`, { waitUntil: "load" });
-      if (withCss) await page.addStyleTag({ content: simCss });
-      // CSS を後から差し込むと transition-colors 等が走り出し、getComputedStyle が
-      // 補間中の値（背景が rgba(255,255,255,0.17) など）を返して測定が揺れる。
-      // 測る前にアニメーションを止めて確定値にする。
-      await page.addStyleTag({
-        content: "*, *::before, *::after { transition: none !important; animation: none !important; }",
-      });
-      await page.waitForTimeout(120);
-      const m = await page.evaluate(SAMPLE_MEASURE);
-      await page.close();
-      return m;
-    };
-    const bare = await measureOnce(false);
-    const m = await measureOnce(true);
+    // offline: true で本当に外に出られない状態にし、さらに http(s) は abort する。
+    // ここで色が出れば「1枚で完結している」ことの実証になる。
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      offline: true,
+    });
+    const outside = [];
+    await context.route(
+      (url) => url.protocol === "http:" || url.protocol === "https:",
+      (route) => {
+        outside.push(route.request().url());
+        return route.abort();
+      }
+    );
+    const page = await context.newPage();
+    // route を通らない経路（file:// 以外の何か）も取りこぼさないよう直に数える
+    page.on("request", (r) => {
+      const u = r.url();
+      if (!u.startsWith("file:") && !u.startsWith("data:") && !u.startsWith("blob:")) {
+        outside.push(u);
+      }
+    });
+    await page.goto(`file://${join(PKG, "html", `${item.id}.html`)}`, { waitUntil: "load" });
+    await page.waitForTimeout(80);
+    const m = await page.evaluate(SAMPLE_MEASURE);
+    await context.close();
 
     const detail =
       `要素${m.elements} / 文字${m.text} / 高さ${m.height}px / 幅${m.width}px / ` +
-      `スタイル付き ${bare.styled}→${m.styled} / --card="${m.rootVar}" / ` +
-      `${m.tokenClass ?? "トークン未使用"}=${m.tokenBg ?? "-"} / font=${m.fontSize}`;
+      `style${m.styles}枚 ${m.rules}ルール / --card="${m.cardVar}" / ` +
+      `bg-card=${m.bgCard ?? "未使用"} / text-muted-foreground=${m.mutedFg ?? "未使用"} / ` +
+      `対照 bg=${usesClass(item.id, "bg-card") ? m.probeBg : "対象外"} ` +
+      `fg=${usesClass(item.id, "text-muted-foreground") ? m.probeFg : "対象外"} / ` +
+      `外部要求 ${outside.length}件`;
     // 真っ白でないこと
     const blank = m.elements < 3 || m.height < 40 || m.text === 0;
-    // Tailwind を入れた前後で見た目が変わること（＝クラスが効いている）
-    const unstyled = m.styled <= bare.styled && m.height === bare.height;
-    // 埋め込んだトークン定義が届いているか（--card が空なら <style> が効いていない）
-    const tokensMissing = m.rootVar === "";
-    // トークンが解決したか。素の状態（Tailwind 無し）と同じ色のままなら、
-    // そのクラスは何も効いていない＝定義が届いていない。
-    const tokenBroken = m.tokenClass !== null && m.tokenBg === bare.tokenBg;
-    check(!blank && !unstyled && !tokensMissing && !tokenBroken, item.id, detail);
+    // CSS が実際に届いていること
+    const noCss = m.styles === 0 || m.rules < 20 || m.cardVar === "";
+    // 実在の要素で、bg-card が透明でない／text-muted-foreground が真っ黒でない
+    const bgBroken = m.bgCard !== null && m.bgCard === TRANSPARENT;
+    const fgBroken = m.mutedFg !== null && m.mutedFg === BLACK;
+    // 対照要素でも同じこと（マークアップの都合に左右されない直接の証明）。
+    // そのクラスを使っているページに限る。
+    const probeBroken =
+      (usesClass(item.id, "bg-card") && m.probeBg === TRANSPARENT) ||
+      (usesClass(item.id, "text-muted-foreground") && m.probeFg === BLACK);
+    check(
+      !blank && !noCss && !bgBroken && !fgBroken && !probeBroken && outside.length === 0,
+      item.id,
+      detail
+    );
   }
 }
 

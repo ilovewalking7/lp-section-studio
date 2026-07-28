@@ -2,10 +2,11 @@
 // 元データ: tailwind.config.js（darkMode / theme.extend）と src/index.css（:root / .dark）
 
 /**
- * バニラHTML書き出しの <head> に差し込むデザイントークン定義。
- * 素の Tailwind に無い bg-card / text-muted-foreground などを CDN 版でも
+ * **動的版**バニラHTML書き出しの <head> に差し込むデザイントークン定義。
+ * 素の Tailwind に無い bg-card / text-muted-foreground などを Play CDN でも
  * 解決させるための設定（Play CDN 公式の方法）。
  * Tailwind CDN の <script> より**後ろ**に置くこと。
+ * 静的版は実CSSを埋め込むので、こちらは使わない。
  */
 export const HEAD_TOKEN_INJECTION = `    <!-- このコンポーネント集のデザイントークン。
          bg-card / text-muted-foreground などは素の Tailwind には無いので、

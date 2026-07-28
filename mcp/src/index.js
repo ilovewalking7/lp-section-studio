@@ -141,8 +141,8 @@ server.registerTool(
     title: "React抜きの静的HTMLを取得",
     description:
       "React を使わずにそのまま貼れる HTML を返す。出力に react も babel も含まれず、" +
-      "Tailwind を読み込むだけで表示される。PHP・Rails・Hugo・WordPress など、" +
-      "React を持ち込めない現場向け。" +
+      "その1枚ぶんの CSS を <style> に埋め込んであるので外部への通信も無い。" +
+      "PHP・Rails・Hugo・WordPress など、React を持ち込めない現場向け。" +
       "なお状態や操作を持つ部品（standalone が false のもの）は、" +
       "静的版では見た目だけになり操作は動かない。",
     inputSchema: {

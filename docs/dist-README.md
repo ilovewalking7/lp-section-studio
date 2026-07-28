@@ -27,14 +27,15 @@
 html/offers-value-stack-offer.html
 ```
 
-React も Node も要りません。Tailwind を CDN から1行読み込み、その下に
-このコンポーネント集のデザイントークン（`bg-card` などの色定義）を
-埋め込んであるので、ファイル単体で意図した見た目になります。
+React も Node も要りません。**ネット接続も要りません。** その1枚に必要な
+CSS だけをコンパイルして `<style>` に埋め込んであるので、外部への通信は
+一切ありません（CDN も Web フォントも読みません）。オフラインでも、社内
+ネットワークの中でも、同じ見た目になります。
 
-**ネット接続が要ります。** Tailwind を CDN から読むためです。オフラインで
-使う場合や本番に載せる場合は、`<script src="https://cdn.tailwindcss.com">`
-を自分でビルドした Tailwind の CSS に差し替えてください。その際
-`components/theme/tailwind.config.js` を使うと同じ色が出ます。
+`bg-card` などこのコンポーネント集のデザイントークンも、その CSS の中で
+解決済みです。自分のビルドに載せ替えたい場合は
+`components/theme/tailwind.config.js` と `components/theme/tokens.css` を
+使うと同じ色が出ます。
 
 ### どれが React 不要か
 

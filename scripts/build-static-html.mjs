@@ -3,7 +3,17 @@
  *
  * このリポジトリの売りの一つは「React が要らない現場でも使える」こと。
  * renderToStaticMarkup で描画結果だけを取り出すので、出力に react も babel も
- * 入らない。Tailwind の CDN を1行読むだけで、HTML を貼れば表示される。
+ * 入らない。HTML を貼れば表示される。
+ *
+ * **CSS も外部に頼らない。** 以前は `cdn.tailwindcss.com` を1行読ませていたが、
+ * 「1枚で完結」と言いながら開くたびに外部へ取りに行く作りで、オフライン・
+ * 社内網・CDN障害で色が消える（Tailwind 自身も Play CDN を本番非推奨としている）。
+ * そこで 1件ずつ、**その HTML だけを content にした Tailwind をコンパイル**して
+ * <style> に埋め込む。全880件の和集合は 339KB あって全件に埋めると 300MB 近くに
+ * なるが、個別なら 1件 8KB 前後で収まる（大半は preflight）。
+ *
+ * Tailwind は毎回プロセスを起こすと 880 回で数十分かかるので、postcss プラグインと
+ * して**この1プロセスの中から**回す。実測で全件 100 秒前後。
  *
  * ただし全部が静的で成立するわけではない。状態や操作を持つコンポーネントは
  * 静的化すると見た目だけになる。そこで meta に interactive 判定を持たせ、
@@ -17,8 +27,12 @@
  */
 import { createServer } from "vite";
 import { chromium } from "playwright";
+import postcss from "postcss";
+import tailwindcss from "tailwindcss";
+import autoprefixer from "autoprefixer";
 import { existsSync, readdirSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -26,6 +40,60 @@ const arg = (name, fallback) => {
 };
 const LIMIT = arg("limit", Infinity);
 const OUT = resolve(process.cwd(), "public/html");
+
+// ──────────────────────────────────────────────────────────────────────────
+// Tailwind のコンパイル（1件ぶん）
+// ──────────────────────────────────────────────────────────────────────────
+
+const TW_CONFIG = (
+  await import(pathToFileURL(resolve(process.cwd(), "tailwind.config.js")).href)
+).default;
+// 入力はスタジオ本体と同じ src/index.css。@tailwind の3層に加えて
+// :root / .dark のトークンと body の既定スタイルが入っているので、
+// 出力1本で「スタジオで見たとおり」になる。
+const INPUT_CSS = readFileSync(resolve(process.cwd(), "src/index.css"), "utf-8");
+
+/**
+ * PostCSS の AST 上で空白とコメントを落とす。
+ * cssnano を足せば済むが新規依存を増やしたくないので、stringifier の
+ * raws を潰すだけで済ませる。実測で 14.4KB → 8.3KB。
+ */
+const compact = () => ({
+  postcssPlugin: "compact",
+  OnceExit(root) {
+    root.walkComments((c) => c.remove());
+    root.walk((node) => {
+      node.raws.before = "";
+      if (node.type === "decl") {
+        node.raws.between = ":";
+        delete node.raws.value;
+      } else if (node.type === "rule") {
+        node.raws.between = "";
+        node.raws.after = "";
+        node.raws.semicolon = false;
+        delete node.raws.selector;
+      } else if (node.type === "atrule") {
+        node.raws.afterName = " ";
+        node.raws.between = "";
+        node.raws.after = "";
+        node.raws.semicolon = false;
+        delete node.raws.params;
+      }
+    });
+    root.raws.after = "";
+  },
+});
+compact.postcss = true;
+
+/** この HTML 1枚だけを content にして Tailwind を通し、実CSSを返す */
+async function compileCss(html) {
+  const result = await postcss([
+    tailwindcss({ ...TW_CONFIG, content: [{ raw: html, extension: "html" }] }),
+    autoprefixer(),
+    compact(),
+  ]).process(INPUT_CSS, { from: undefined });
+  return result.css;
+}
 
 /** 状態や操作を持つか（＝静的化すると見た目だけになるか）をソースから判定する */
 const INTERACTIVE = /\buseState\b|\buseEffect\b|\buseReducer\b|\buseRef\b|\bonClick=|\bonChange=|\bonMouseEnter=|\bonSubmit=/;
@@ -70,6 +138,9 @@ const page = await browser.newPage();
 mkdirSync(OUT, { recursive: true });
 const index = [];
 let failed = 0;
+let cssSlot = "";
+let cssMs = 0;
+let cssBytes = 0;
 
 try {
   await page.goto(`http://localhost:${port}/overflow.html`, { waitUntil: "load" });
@@ -77,6 +148,10 @@ try {
     timeout: 60_000,
   });
   const ids = (await page.evaluate(() => window.__ids)).slice(0, LIMIT);
+  // CSS の差し込み位置は src/lib/vanilla.ts が決める。文字列を二重に持つと
+  // 片方だけ直したときに黙って CSS 無しの HTML が出るので、実物を貰う。
+  cssSlot = await page.evaluate(() => window.__cssSlot);
+  if (!cssSlot) throw new Error("window.__cssSlot が取れませんでした");
   console.log(`${ids.length} 件を静的 HTML に書き出します…`);
 
   for (const [i, id] of ids.entries()) {
@@ -95,6 +170,17 @@ try {
       failed++;
       continue;
     }
+    if (!html.includes(cssSlot)) {
+      throw new Error(
+        `${id}: CSS の差し込み位置 ${cssSlot} が HTML にありません（src/lib/vanilla.ts を確認）`
+      );
+    }
+    // ここで初めて外部依存が消える。content はこの HTML 自身。
+    const t = Date.now();
+    const css = await compileCss(html);
+    cssMs += Date.now() - t;
+    cssBytes += css.length;
+    html = html.replace(cssSlot, `<style>\n${css}\n    </style>`);
     writeFileSync(join(OUT, `${id}.html`), html);
     const source = readFileSync(
       resolve(process.cwd(), "src/registry", meta.path.replace("./", "")),
@@ -126,9 +212,14 @@ writeFileSync(
   ) + "\n"
 );
 
+const kb = (n) => `${(n / 1024).toFixed(1)} KB`;
 console.log(
   `\n静的 HTML: ${index.length} 件を書き出しました（失敗 ${failed} 件）。\n` +
     `  うち ${standalone} 件は React 無しでそのまま動きます。\n` +
-    `  残り ${index.length - standalone} 件は状態や操作を持つため、静的版は見た目のみです。`
+    `  残り ${index.length - standalone} 件は状態や操作を持つため、静的版は見た目のみです。\n` +
+    `  CSS の埋め込み: ${(cssMs / 1000).toFixed(0)} 秒 / 1件あたり CSS ${kb(
+      cssBytes / Math.max(1, index.length)
+    )}・HTML ${kb(index.reduce((a, e) => a + e.bytes, 0) / Math.max(1, index.length))}\n` +
+    `  外部への参照はありません（CDN も Web フォントも読みません）。`
 );
 if (failed) process.exit(1);
