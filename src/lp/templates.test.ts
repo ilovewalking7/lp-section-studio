@@ -569,7 +569,7 @@ describe("書き出したLPにデモ由来の固有情報が残らない", () =>
   it.each(TEMPLATES)(
     "%s: 既定値のまま書き出しても、デモ由来の固有情報が残らない",
     async (id, t) => {
-      const html = copyOf(await buildLpDocument(t, t.defaults, { pro: false }));
+      const html = copyOf(await buildLpDocument(t, t.defaults, { paid: false }));
       const leftovers = DEMO_LEFTOVERS[id].filter(
         (word) => html.includes(word) || html.includes(escapeHtml(word))
       );
@@ -585,7 +585,7 @@ describe("書き出したLPにデモ由来の固有情報が残らない", () =>
   it.each(TEMPLATES)(
     "%s: 価格が二重通貨記号・未置換のまま出力されない",
     async (_id, t) => {
-      const html = copyOf(await buildLpDocument(t, t.defaults, { pro: false }));
+      const html = copyOf(await buildLpDocument(t, t.defaults, { paid: false }));
       // デモ側の通貨記号と利用者入力の通貨記号が並ぶ「¥ ¥18,000」「￥￥…」を禁じる
       expect(html, "通貨記号が二重に表示されています").not.toMatch(
         /[¥￥]\s*[¥￥]/
@@ -606,7 +606,7 @@ describe("書き出したLPにデモ由来の固有情報が残らない", () =>
   it.each(TEMPLATES)(
     "%s: 押しても何も起きない死にリンク（href=\"#\"）が残らない",
     async (_id, t) => {
-      const html = await buildLpDocument(t, t.defaults, { pro: false });
+      const html = await buildLpDocument(t, t.defaults, { paid: false });
       expect(html, '死にリンク href="#" が残っています').not.toContain(
         'href="#"'
       );

@@ -200,7 +200,7 @@ describe("書き出しHTML: 二重置換の回帰（実テンプレ）", () => {
         { ...salonTemplate.defaults.plans[2], price: "¥18,500" },
       ],
     };
-    const html = await buildLpDocument(salonTemplate, answers, { pro: false });
+    const html = await buildLpDocument(salonTemplate, answers, { paid: false });
 
     expect(countOf(html, "¥1,980")).toBe(1);
     expect(countOf(html, "¥5,800")).toBe(1);
@@ -219,7 +219,7 @@ describe("書き出しHTML: 二重置換の回帰（実テンプレ）", () => {
         { ...salonTemplate.defaults.plans[2], price: "¥12,000" },
       ],
     };
-    const html = await buildLpDocument(salonTemplate, answers, { pro: false });
+    const html = await buildLpDocument(salonTemplate, answers, { paid: false });
 
     expect(countOf(html, "¥3,000")).toBe(1);
     expect(countOf(html, "¥4,800")).toBe(1);
@@ -233,7 +233,7 @@ describe("書き出しHTML: 写真セクション", () => {
     const answers = answersWith({
       photos: [photo("庭園の露天風呂"), photo("離れの客室", "BBBB")],
     });
-    const html = await buildLpDocument(ryokanTemplate, answers, { pro: false });
+    const html = await buildLpDocument(ryokanTemplate, answers, { paid: false });
 
     expect(html).toContain("<img src=\"data:image/");
     expect(html).toContain('alt="庭園の露天風呂"');
@@ -246,7 +246,7 @@ describe("書き出しHTML: 写真セクション", () => {
     const html = await buildLpDocument(
       ryokanTemplate,
       answersWith({ photos: [] }),
-      { pro: false }
+      { paid: false }
     );
     expect(html).not.toContain("<img src=\"data:image/jpeg");
     expect(html).not.toContain(ryokanTemplate.photoSection.heading);
@@ -258,13 +258,13 @@ describe("書き出しHTML: セクション非表示", () => {
     const answers = answersWith({ photos: [] });
     const marker = answers.testimonials[0].body;
 
-    const full = await buildLpDocument(ryokanTemplate, answers, { pro: false });
+    const full = await buildLpDocument(ryokanTemplate, answers, { paid: false });
     expect(full).toContain(marker);
 
     const hidden = await buildLpDocument(
       ryokanTemplate,
       { ...answers, hiddenSections: ["voice"] },
-      { pro: false }
+      { paid: false }
     );
     expect(hidden).not.toContain(marker);
     expect(hidden.length).toBeLessThan(full.length);
@@ -276,7 +276,7 @@ describe("書き出しHTML: セクション非表示", () => {
 describe("書き出しHTML: JSON-LD 構造化データ", () => {
   it("application/ld+json として入り、@type がテンプレの schemaType と一致する", async () => {
     const answers = answersWith({ photos: [photo("庭園の露天風呂")] });
-    const html = await buildLpDocument(ryokanTemplate, answers, { pro: false });
+    const html = await buildLpDocument(ryokanTemplate, answers, { paid: false });
 
     expect(html).toContain('type="application/ld+json"');
     const ld = JSON.parse(extractJsonLd(html)) as Record<string, unknown>;
@@ -300,7 +300,7 @@ describe("書き出しHTML: JSON-LD 構造化データ", () => {
     const html = await buildLpDocument(
       ryokanTemplate,
       answersWith({ shopName: evil, photos: [] }),
-      { pro: false }
+      { paid: false }
     );
 
     const raw = extractJsonLd(html);
@@ -318,7 +318,7 @@ describe("書き出しHTML: JSON-LD 構造化データ", () => {
 describe("書き出しHTML: favicon / theme-color", () => {
   it("店名の先頭1文字を描いた SVG favicon と theme-color が入る", async () => {
     const answers = answersWith({ shopName: "潮騒の宿かもめ", photos: [] });
-    const html = await buildLpDocument(ryokanTemplate, answers, { pro: false });
+    const html = await buildLpDocument(ryokanTemplate, answers, { paid: false });
 
     expect(html).toContain(
       `<meta name="theme-color" content="${ryokanTemplate.accentHex}" />`
@@ -338,7 +338,7 @@ describe("書き出しHTML: favicon / theme-color", () => {
     const html = await buildLpDocument(
       ryokanTemplate,
       answersWith({ shopName: "<script>", photos: [] }),
-      { pro: false }
+      { paid: false }
     );
     const m = /href="data:image\/svg\+xml,([^"]*)"/.exec(html);
     const svg = decodeURIComponent(m![1]);
@@ -349,7 +349,7 @@ describe("書き出しHTML: favicon / theme-color", () => {
 describe("書き出しHTML: OGP（Proのみ）", () => {
   it("pro なら og:site_name / og:locale が入る", async () => {
     const answers = answersWith({ photos: [photo("庭園の露天風呂")] });
-    const html = await buildLpDocument(ryokanTemplate, answers, { pro: true });
+    const html = await buildLpDocument(ryokanTemplate, answers, { paid: true });
 
     expect(html).toContain('property="og:site_name"');
     expect(html).toContain('content="ja_JP"');
@@ -359,7 +359,7 @@ describe("書き出しHTML: OGP（Proのみ）", () => {
     const html = await buildLpDocument(
       ryokanTemplate,
       answersWith({ photos: [photo("庭園の露天風呂")] }),
-      { pro: false }
+      { paid: false }
     );
     expect(html).not.toContain("og:site_name");
   });
@@ -373,7 +373,7 @@ describe("書き出しHTML: OGP（Proのみ）", () => {
   it("写真があっても og:image / JSON-LDのimage には data URI を重複させない", async () => {
     const big = `data:image/jpeg;base64,${"A".repeat(20000)}`;
     const answers = answersWith({ photos: [{ dataUrl: big, alt: "露天風呂" }] });
-    const html = await buildLpDocument(ryokanTemplate, answers, { pro: true });
+    const html = await buildLpDocument(ryokanTemplate, answers, { paid: true });
 
     expect(html).not.toContain("og:image");
     const jsonLd = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(
@@ -446,7 +446,7 @@ describe("書き出しHTML: 全幅でないセクションの中央寄せ", () =
       expect(wrap).toContain(t.photoSection.theme.bg);
 
       const answers = answersWithMarkedTestimonial(t);
-      const html = await buildLpDocument(t, answers, { pro: false });
+      const html = await buildLpDocument(t, answers, { paid: false });
 
       const openTag = `<div class="${wrap}">`;
       expect(countOf(html, openTag), `${t.id}: ラッパーの数`).toBe(1);
