@@ -84,19 +84,28 @@ try {
   const targets = ids.slice(0, LIMIT);
   console.log(`幅 ${WIDTH}px で ${targets.length} 件を検査します…`);
 
-  for (const id of targets) {
+  for (const [i, id] of targets.entries()) {
     let result;
     try {
-      result = await page.evaluate(async (componentId) => {
-        await window.__mount(componentId);
-        const d = document.documentElement;
-        return { scrollWidth: d.scrollWidth, clientWidth: d.clientWidth };
-      }, id);
+      // 1件が固まっても全体を巻き込まないよう上限を設ける。
+      // これが無いと1件のハングで CI が無限に回り続ける。
+      result = await Promise.race([
+        page.evaluate(async (componentId) => {
+          await window.__mount(componentId);
+          const d = document.documentElement;
+          return { scrollWidth: d.scrollWidth, clientWidth: d.clientWidth };
+        }, id),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("15秒を超えました")), 15_000)
+        ),
+      ]);
     } catch (e) {
       failures.push({ id, reason: `描画に失敗: ${String(e).slice(0, 120)}` });
       continue;
     }
     checked++;
+    if ((i + 1) % 100 === 0)
+      console.log(`  ${i + 1}/${targets.length} 件…`);
     const over = result.scrollWidth - result.clientWidth;
     if (over > TOLERANCE) {
       failures.push({

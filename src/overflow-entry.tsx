@@ -34,8 +34,18 @@ window.__mount = async (id: string) => {
       <Comp />
     </StrictMode>
   );
-  // 描画とレイアウト確定を待つ
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  // 描画とレイアウト確定を待つ。
+  // requestAnimationFrame は headless の構成によっては発火しないことがあり、
+  // それだけに頼ると永久に待ち続ける（実際 CI で1時間ハングした）。
+  // タイマーと競争させて、どちらか早い方で先に進める。
+  await Promise.race([
+    new Promise((r) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => r(null)))
+    ),
+    new Promise((r) => setTimeout(r, 150)),
+  ]);
+  // レイアウトを確実に確定させる
+  void document.documentElement.scrollWidth;
 };
 
 window.__unmount = () => {

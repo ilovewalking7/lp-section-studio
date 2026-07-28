@@ -5,6 +5,12 @@ on:
     branches: ["**"]
   pull_request:
 
+# push と pull_request の両方で発火するため同じコミットで2本走る。
+# 古い方を打ち切って実行時間とランナーを無駄にしない。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build & typecheck
@@ -31,6 +37,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Check horizontal overflow (幅375pxで全件描画)
+        timeout-minutes: 20
         run: npm run check:overflow
 
       - name: Verify registry output exists
