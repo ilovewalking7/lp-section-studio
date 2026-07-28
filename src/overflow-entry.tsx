@@ -1,4 +1,5 @@
 import { createRoot, type Root } from "react-dom/client";
+import { flushSync } from "react-dom";
 import { StrictMode } from "react";
 import { registry } from "@/registry";
 import { generateVanillaHtml } from "@/lib/vanilla";
@@ -35,23 +36,26 @@ window.__mount = async (id: string) => {
   const Comp = await entry.load();
   root?.unmount();
   root = createRoot(el);
-  root.render(
-    <StrictMode>
-      <Comp />
-    </StrictMode>
-  );
-  // 描画とレイアウト確定を待つ。
-  // requestAnimationFrame は headless の構成によっては発火しないことがあり、
-  // それだけに頼ると永久に待ち続ける（実際 CI で1時間ハングした）。
-  // タイマーと競争させて、どちらか早い方で先に進める。
-  await Promise.race([
-    new Promise((r) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => r(null)))
-    ),
-    new Promise((r) => setTimeout(r, 150)),
-  ]);
-  // レイアウトを確実に確定させる
-  void document.documentElement.scrollWidth;
+
+  // React 18 の createRoot は既定で非同期に確定するので、flushSync で
+  // その場で確定させる。こうすると描画待ちが要らなくなる。
+  //
+  // 以前は requestAnimationFrame を待っていたが、headless の構成によっては
+  // rAF が発火せず、CI で1時間ハングした。タイマーと競争させる形に直したが、
+  // 今度は rAF が来ない環境で毎回タイマー分だけ待つことになり、
+  // 880 件で 2 分以上を無駄に積んでいた。待ち自体を無くすのが正しい。
+  flushSync(() => {
+    root!.render(
+      <StrictMode>
+        <Comp />
+      </StrictMode>
+    );
+  });
+
+  // 確定後に effect が走って寸法を変える部品があるので、マイクロタスクを
+  // 1周ぶん空けてから測る。scrollWidth の読み取り自体がレイアウトを
+  // 強制するため、これ以上の待ちは要らない。
+  await new Promise((r) => setTimeout(r, 0));
 };
 
 window.__unmount = () => {
