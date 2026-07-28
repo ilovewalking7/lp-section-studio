@@ -15,6 +15,7 @@ import {
   GalleryHorizontalEnd,
   Gamepad2,
   Gem,
+  Gift,
   Github,
   Home,
   Move,
@@ -59,6 +60,8 @@ import { GalleryView } from "@/components/GalleryView";
 import { registry, categories } from "@/registry";
 import { tCategory, tName } from "@/registry/i18n";
 import { THEME_CATEGORIES } from "@/lib/stats";
+import { isFreeComponent } from "@/lib/free";
+import { FREE_EDITION_COUNT } from "@/registry/freeCount";
 import { type PlanId } from "@/lib/plan";
 import { type Lang } from "@/lib/i18n";
 
@@ -143,7 +146,10 @@ const STUDIO_COPY = {
     statSections: "LPセクション",
     statStyles: "デザインスタイル",
     statCategories: "カテゴリ",
-    statPrice: "あなたの月額",
+    statFree: "無料で使える数",
+    freeFilter: `無料${FREE_EDITION_COUNT}個`,
+    freeFilterHint: `無料版（MCP）に含まれる ${FREE_EDITION_COUNT} 個だけを表示する`,
+    freeOf: (n: number) => `無料${FREE_EDITION_COUNT}個のうち ${n} 件`,
     distribute: "コピペ・shadcn add・バニラHTML、3経路で配布",
     advancedTitle: (n: number) => `${n} 個の上級コンポーネント`,
     advancedBody:
@@ -168,7 +174,10 @@ const STUDIO_COPY = {
     statSections: "LP sections",
     statStyles: "Design styles",
     statCategories: "Categories",
-    statPrice: "Your price / mo",
+    statFree: "Free to use",
+    freeFilter: `Free ${FREE_EDITION_COUNT}`,
+    freeFilterHint: `Show only the ${FREE_EDITION_COUNT} components included in the free (MCP) edition`,
+    freeOf: (n: number) => `${n} of the ${FREE_EDITION_COUNT} free components`,
     distribute: "Copy-paste · shadcn add · vanilla HTML — 3 ways to ship",
     advancedTitle: (n: number) => `${n} advanced components`,
     advancedBody:
@@ -191,14 +200,22 @@ function FilterChip({
   active,
   onClick,
   children,
+  // ON/OFF の二値トグルとして使う場合のみ渡す（支援技術に押下状態を伝える）
+  pressed,
+  title,
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
+  pressed?: boolean;
+  title?: string;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-pressed={pressed}
+      title={title}
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
         active
@@ -227,6 +244,7 @@ export default function Studio({
   const s = STUDIO_COPY[lang];
   const [query, setQuery] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
+  const [onlyFree, setOnlyFree] = useState(false);
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [activeId, setActiveId] = useState(registry[0]?.id);
   const [view, setView] = useState<"detail" | "gallery">("gallery");
@@ -241,7 +259,9 @@ export default function Studio({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return registry.filter((e) => {
+      // 検索・カテゴリ・お気に入り・無料版はすべて AND で効く
       if (onlyFavs && !favs.includes(e.id)) return false;
+      if (onlyFree && !isFreeComponent(e.id)) return false;
       if (catFilter && e.category !== catFilter) return false;
       if (!q) return true;
       return (
@@ -251,7 +271,12 @@ export default function Studio({
         (e.tags ?? []).some((t) => t.toLowerCase().includes(q))
       );
     });
-  }, [query, onlyFavs, catFilter, favs]);
+  }, [query, onlyFavs, onlyFree, catFilter, favs]);
+
+  // 件数表示（無料版で絞り込み中は「無料100個のうち n 件」）
+  const countLabel = onlyFree
+    ? s.freeOf(filtered.length)
+    : `${filtered.length} ${s.items}`;
 
   const active =
     registry.find((e) => e.id === activeId) ?? filtered[0] ?? registry[0];
@@ -395,9 +420,7 @@ export default function Studio({
                 {s.favorites}
                 {favs.length > 0 && ` (${favs.length})`}
               </Button>
-              <span className="text-xs text-muted-foreground">
-                {filtered.length} {s.items}
-              </span>
+              <span className="text-xs text-muted-foreground">{countLabel}</span>
             </div>
 
             <nav className="space-y-5 pb-6">
@@ -475,14 +498,25 @@ export default function Studio({
             <Stat value={`${registry.length}+`} label={s.statSections} />
             <Stat value={`${styleCount}`} label={s.statStyles} />
             <Stat value={`${categories.length}`} label={s.statCategories} />
-            <Stat value="¥0" label={s.statPrice} />
+            <Stat value={`${FREE_EDITION_COUNT}`} label={s.statFree} />
             <span className="ml-auto hidden text-xs text-muted-foreground lg:block">
               {s.distribute}
             </span>
           </div>
 
           {/* スタイル/カテゴリのフィルタチップ（探しやすさ） */}
-          <div className="mb-5 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
+          <div className="mb-2 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
+            {/* 無料版に入っている100個だけを見る（カテゴリとは別軸なので区切り線を挟む） */}
+            <FilterChip
+              active={onlyFree}
+              pressed={onlyFree}
+              title={s.freeFilterHint}
+              onClick={() => setOnlyFree((v) => !v)}
+            >
+              <Gift className="size-3.5" />
+              {s.freeFilter}
+            </FilterChip>
+            <span aria-hidden className="my-1 w-px shrink-0 bg-border" />
             <FilterChip
               active={catFilter === null}
               onClick={() => setCatFilter(null)}
@@ -505,6 +539,11 @@ export default function Studio({
               );
             })}
           </div>
+
+          {/* 絞り込みの結果件数（サイドバーが無い狭い画面でも分かるように） */}
+          <p className="mb-4 text-xs text-muted-foreground" aria-live="polite">
+            {countLabel}
+          </p>
 
           {view === "gallery" ? (
             <GalleryView

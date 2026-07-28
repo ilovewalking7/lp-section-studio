@@ -36,6 +36,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getPlans } from "@/lib/plan";
+// 数字だけ要るので、ID 一覧を巻き込まないよう生成物から直接読む（LP の初期チャンク対策）
+import { FREE_EDITION_COUNT } from "@/registry/freeCount";
 import type { Lang } from "@/lib/i18n";
 
 // --- Dogfooding: 実在の本物の3Dコンポーネントをそのまま読み込んで埋め込む ---
@@ -252,8 +254,7 @@ const COPY = {
     statSections: "セクション",
     statStyles: "スタイル",
     statCategories: "カテゴリ",
-    statPriceValue: "¥0",
-    statPriceLabel: "から使える",
+    statFreeLabel: "無料で使える数",
 
     trustNote: "完全自己完結・追加依存ゼロ",
     trustTested: "全{n}件テスト済み（エラーゼロ）",
@@ -405,7 +406,8 @@ const COPY = {
 
     pricingBadge: "料金",
     pricingHeading: "¥0からはじめて、必要なときに。",
-    pricingSub: "個人の試用から、チームの制作現場まで。3つのプランで段階的に。",
+    pricingSub:
+      "個人の試用から、チームの制作現場まで。無料版と買い切り版の2つだけです。",
     pricingRecommended: "おすすめ",
     pricingChoose: "選ぶ",
     pricingSeeDetails: "料金の詳細を見る",
@@ -481,8 +483,7 @@ const COPY = {
     statSections: "sections",
     statStyles: "styles",
     statCategories: "categories",
-    statPriceValue: "Free",
-    statPriceLabel: "to start",
+    statFreeLabel: "free to use",
 
     trustNote: "Fully self-contained · zero extra deps",
     trustTested: "All {n} tested (zero errors)",
@@ -638,7 +639,7 @@ const COPY = {
     pricingBadge: "Pricing",
     pricingHeading: "Start free, upgrade when you need to.",
     pricingSub:
-      "From solo trials to a team's production floor — three plans, step by step.",
+      "From solo trials to a team's production floor — just two: free and pay-once.",
     pricingRecommended: "Recommended",
     pricingChoose: "Choose",
     pricingSeeDetails: "See full pricing",
@@ -758,6 +759,7 @@ export default function Landing({
   const cComponents = useCountUp(stats.components, reduced);
   const cStyles = useCountUp(stats.styles, reduced);
   const cCategories = useCountUp(stats.categories, reduced);
+  const cFree = useCountUp(FREE_EDITION_COUNT, reduced);
 
   const themeLabel = (id: HeroTheme): string =>
     id === "aurora"
@@ -770,7 +772,7 @@ export default function Landing({
     { key: "components", value: `${cComponents}+`, label: t.statSections },
     { key: "styles", value: `${cStyles}`, label: t.statStyles },
     { key: "categories", value: `${cCategories}`, label: t.statCategories },
-    { key: "price", value: t.statPriceValue, label: t.statPriceLabel },
+    { key: "free", value: `${cFree}`, label: t.statFreeLabel },
   ];
 
   /* ----- データ ----- */

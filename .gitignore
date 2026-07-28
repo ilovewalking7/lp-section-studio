@@ -27,3 +27,6 @@ public/r/
 
 # 静的HTMLは生成物（npm run html で作る）。6.7MB あるので配信物には含めない。
 public/html/
+
+# BOOTH 配布用の ZIP と展開ディレクトリ（node scripts/build-release.mjs で作る）
+release/
