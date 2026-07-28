@@ -241,13 +241,13 @@ function wrapDocument(
   body: string,
   t: IndustryTemplate,
   a: LpAnswers,
-  pro: boolean
+  paid: boolean
 ): string {
   const title = `${a.shopName}｜${a.tagline}`;
   // og:image は出力しない。写真は data URI で本文に埋め込まれているが、SNSのクローラは
   // data URI を取得できずサムネイルにできないため、数百KBを二重に載せるだけになる。
   // （公開URL上の実画像を指せるようになるホスト型公開＝M2で対応する）
-  const ogp = pro
+  const ogp = paid
     ? `
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(a.intro)}" />
@@ -294,14 +294,14 @@ ${body}
  *      全幅でないデモ（align !== "full"）は centerWrapClass のラッパーで中央寄せ
  *    - 写真セクション: PhotoShowcase を回答の写真で描画するだけ（内容は利用者入力そのもので
  *      デモの素文言を含まないため、swap/rawSwap/linkifyCta は適用しない）
- * 3. 連結し、title/meta/JSON-LD/favicon/theme-color/OGP(proのみ)/Google Fonts/
- *    インラインCSS/バッジ(freeのみ)付きの1枚HTMLに包む
+ * 3. 連結し、title/meta/JSON-LD/favicon/theme-color/OGP(フル版のみ)/Google Fonts/
+ *    インラインCSS/バッジ(無料版のみ)付きの1枚HTMLに包む
  * 4. formatHtml で整形する
  */
 export async function buildLpDocument(
   t: IndustryTemplate,
   a: LpAnswers,
-  opts: { pro: boolean }
+  opts: { paid: boolean }
 ): Promise<string> {
   const server = (await import(
     "react-dom/server.browser"
@@ -341,8 +341,8 @@ export async function buildLpDocument(
     rendered.push(wrap ? `<div class="${wrap}">${linked}</div>` : linked);
   }
 
-  const doc = wrapDocument(rendered.join("\n"), t, a, opts.pro);
-  const withBadge = insertBeforeFooterClose(doc, opts.pro ? "" : badgeHtml());
+  const doc = wrapDocument(rendered.join("\n"), t, a, opts.paid);
+  const withBadge = insertBeforeFooterClose(doc, opts.paid ? "" : badgeHtml());
   return formatHtml(withBadge);
 }
 

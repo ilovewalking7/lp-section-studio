@@ -15,8 +15,8 @@ import {
   Download,
   ExternalLink,
   FolderOpen,
+  Info,
   Loader2,
-  Lock,
   Save,
   Share2,
   Sparkles,
@@ -34,16 +34,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { LpPlanId } from "../lpPlan";
-import { FREE_MONTHLY_EXPORT_LIMIT, LP_PLANS, getStripeLink } from "../lpPlan";
+import { LP_PLANS, getStripeLink } from "../lpPlan";
 import type { SavedProject } from "../share";
 import type { IndustryTemplate, LpAnswers } from "../types";
 
 /** 書き出しまわりの状態 */
 export interface ExportStatus {
   plan: LpPlanId;
-  pro: boolean;
-  remainingExports: number;
-  exportBlocked: boolean;
+  /** 買い切り版（フル）を持っているか。バッジ非表示・OGP出力の可否になる */
+  paid: boolean;
   downloading: boolean;
   copyingHtml: boolean;
   copiedShare: boolean;
@@ -85,13 +84,13 @@ export default function ExportStep({
   projectPanel: ProjectPanel;
   actions: ExportActions;
 }) {
-  const { pro, exportBlocked, downloading, copyingHtml, copiedShare } = status;
+  const { paid, downloading, copyingHtml, copiedShare } = status;
   const pricingHeadingRef = useRef<HTMLHeadingElement>(null);
 
   /*
-   * 上限に達したときの唯一の解除導線。別サービス（Component Studio）の料金ページへ
-   * 飛ばすと、ビルダーの作業から離脱するうえ、そこで契約しても参照するプラン状態が
-   * 別キー（cs:plan / lp:plan）のため書き出しは解除されない。同じ画面の下にある
+   * 「バッジなしで書き出したい」人の導線。別サービス（Component Studio）の料金ページへ
+   * 飛ばすと、ビルダーの作業から離脱するうえ、そこで買ってもプラン状態は別キー
+   * （cs:plan / lp:plan）のためバッジは消えない。同じ画面の下にある
    * 料金プランへスクロールし、ビルダーから離脱させない。
    * 先にフォーカスを移してから（preventScroll でジャンプを抑えて）滑らかに送る。
    */
@@ -144,38 +143,22 @@ export default function ExportStep({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!pro && (
-            <div
-              className={cn(
-                "flex flex-wrap items-center gap-2 rounded-md border p-2.5 text-xs",
-                exportBlocked
-                  ? "border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-400"
-                  : "border-border bg-muted/30 text-muted-foreground"
-              )}
-            >
-              <Lock className="size-3.5 shrink-0" aria-hidden />
-              {exportBlocked ? (
-                <span>
-                  今月の書き出し上限（{FREE_MONTHLY_EXPORT_LIMIT}回）に達しました。
-                </span>
-              ) : (
-                <span>
-                  Freeプラン：今月の書き出しは残り{" "}
-                  <b>{status.remainingExports}</b> / {FREE_MONTHLY_EXPORT_LIMIT}{" "}
-                  回
-                </span>
-              )}
-              {exportBlocked && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="ml-auto h-7 gap-1 text-amber-700 hover:text-amber-800 dark:text-amber-400"
-                  onClick={goToPricing}
-                >
-                  <Sparkles className="size-3.5" aria-hidden />{" "}
-                  Proにアップグレード
-                </Button>
-              )}
+          {!paid && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs text-muted-foreground">
+              <Info className="size-3.5 shrink-0" aria-hidden />
+              <span>
+                無料版：書き出しは何回でもできます。フッターに「Made with
+                ミセテLP」バッジが入ります。
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-auto h-7 gap-1"
+                onClick={goToPricing}
+              >
+                <Sparkles className="size-3.5" aria-hidden />{" "}
+                バッジなしで書き出す（フル版 ¥9,800 買い切り）
+              </Button>
             </div>
           )}
 
@@ -183,7 +166,7 @@ export default function ExportStep({
             size="lg"
             className="h-12 w-full text-base sm:w-auto sm:min-w-72"
             onClick={actions.onDownload}
-            disabled={exportBlocked || downloading}
+            disabled={downloading}
           >
             {downloading ? (
               <Loader2 className="mr-2 size-5 animate-spin" aria-hidden />
@@ -197,16 +180,15 @@ export default function ExportStep({
             <li className="flex items-start gap-1.5 rounded-md border bg-muted/20 p-2.5">
               <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
               <span className="text-muted-foreground">
-                <b className="text-foreground">Free</b>：月
-                {FREE_MONTHLY_EXPORT_LIMIT}
-                回まで／フッターに「Made with ミセテLP」バッジ
+                <b className="text-foreground">無料</b>
+                ：書き出し無制限／フッターに「Made with ミセテLP」バッジ
               </span>
             </li>
             <li className="flex items-start gap-1.5 rounded-md border bg-muted/20 p-2.5">
               <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
               <span className="text-muted-foreground">
-                <b className="text-foreground">Pro / Studio</b>
-                ：書き出し無制限／バッジなし／OGP（SNSでの見え方）設定つき
+                <b className="text-foreground">フル（¥9,800 買い切り）</b>
+                ：バッジなし／OGP（SNSでの見え方）設定つき
               </span>
             </li>
           </ul>
@@ -218,7 +200,7 @@ export default function ExportStep({
         <CardHeader>
           <CardTitle className="text-base">共有・コピー・保存</CardTitle>
           <CardDescription>
-            共有URLは無料・無制限で、書き出し回数にはカウントされません。HTMLのコピーはダウンロードと同じ成果物のため、書き出し回数を1回消費します。
+            共有URLは無料・無制限です。HTMLのコピーはダウンロードと同じ成果物（無料版はフッターのバッジ入り）を渡します。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -238,12 +220,11 @@ export default function ExportStep({
               )}
               {copiedShare ? "コピーしました" : "共有URLをコピー"}
             </Button>
-            {/* コピーもダウンロードと同一の成果物を渡すため、上限に達したら同じく止める */}
             <Button
               variant="outline"
               size="sm"
               onClick={actions.onCopyHtml}
-              disabled={exportBlocked || copyingHtml}
+              disabled={copyingHtml}
             >
               {copyingHtml ? (
                 <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
@@ -253,13 +234,6 @@ export default function ExportStep({
               HTMLをコピー
             </Button>
           </div>
-          {exportBlocked && (
-            <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
-              <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              今月の書き出し上限（{FREE_MONTHLY_EXPORT_LIMIT}
-              回）に達しているため、HTMLのコピーもできません。共有URLのコピーは引き続きご利用いただけます。
-            </p>
-          )}
           <p className="text-xs text-muted-foreground">
             共有URLに写真は含まれません（URLが長くなりすぎるため）。写真ごと渡すときはHTMLをダウンロードしてください。
           </p>
@@ -325,7 +299,7 @@ export default function ExportStep({
 
       <PublishGuide />
 
-      {/* 上限到達時の「Proにアップグレード」の着地点（goToPricing） */}
+      {/* 「バッジなしで書き出す」の着地点（goToPricing） */}
       <section className="space-y-3">
         <h2
           ref={pricingHeadingRef}
@@ -337,15 +311,16 @@ export default function ExportStep({
         <p className="text-xs text-muted-foreground">
           ※ 決済は未接続です。下のボタンでの切り替えは、機能の違いを試すためのデモです。
         </p>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {LP_PLANS.map((tier) => {
             const isCurrent = status.plan === tier.id;
-            const link = tier.id === "free" ? null : getStripeLink(tier.id);
+            const link = tier.id === "free" ? null : getStripeLink();
             return (
               <Card
                 key={tier.id}
                 className={cn(
                   "flex flex-col",
+                  tier.highlight && !isCurrent && "border-primary/40",
                   isCurrent && "border-primary ring-1 ring-primary"
                 )}
               >
@@ -354,6 +329,11 @@ export default function ExportStep({
                   <p className="text-2xl font-bold text-foreground">
                     {tier.priceLabel}
                   </p>
+                  {tier.priceNote && (
+                    <p className="text-xs text-muted-foreground">
+                      {tier.priceNote}
+                    </p>
+                  )}
                 </CardHeader>
                 <CardContent className="flex-1">
                   <ul className="space-y-1.5 text-sm">
@@ -384,7 +364,7 @@ export default function ExportStep({
                       className={cn(buttonVariants({}), "w-full")}
                     >
                       <ExternalLink className="mr-1.5 size-4" aria-hidden />{" "}
-                      アップグレード
+                      フル版を購入
                     </a>
                   ) : (
                     <>
@@ -393,7 +373,7 @@ export default function ExportStep({
                         className="w-full"
                         onClick={() => actions.onSetPlan(tier.id)}
                       >
-                        デモモードで{tier.name}を試す
+                        デモモードで{tier.name}版を試す
                       </Button>
                       <p className="text-center text-[11px] text-muted-foreground">
                         ※ 現在は決済未接続のデモです。

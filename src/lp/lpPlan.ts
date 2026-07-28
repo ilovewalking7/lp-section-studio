@@ -1,110 +1,89 @@
 /**
- * ミセテLP の料金プラン・クォータ・Stripeリンク・サイトURLの単一の真実。
+ * ミセテLP の料金プラン・Stripeリンク・サイトURLの単一の真実。
  * ビルダーUI（LpBuilder）のゲーティングと表示はすべてここを参照する。
  * 既存プラン（src/lib/plan.ts）とは別サービスのため独立した定義を持つ。
+ *
+ * ── なぜ月額をやめて買い切りにしたのか ──
+ * 作るのは「1枚のHTMLファイル」で、持ち帰った時点で利用者の手元に残る。
+ * 毎月こちらが何かを提供し続ける種類の商品ではないのに月額を取ると、
+ * 解約が止まらないうえ、こちらにも継続的な更新・サポートの義務が生まれる。
+ * 姉妹のコンポーネント集（src/lib/plan.ts）と同じく、買い切りの2段に揃える。
+ *
+ * ── なぜ「無料は書き出し月3回まで」の上限を捨てたのか ──
+ * 1. LPは一度で決まらない。書き出して実機で確認し、直してまた書き出す。
+ *    月3回の上限は、利用者がまだ価値を感じていない最初の作業のさなかで手を止める。
+ *    止められた人は買うのではなく、そのまま帰ってしまう。
+ * 2. プラン状態も回数もブラウザの localStorage にあり、編集すれば外せる。
+ *    守れない壁は、規約どおりに使う正直な利用者だけを止める。
+ * 3. 実際に効く壁は、書き出したHTMLに焼き込まれるフッターのバッジのほう。
+ *    無料で公開されたLPがそのまま宣伝になる（Carrd・Tally と同じ形）。
  */
 import { useEffect, useState } from "react";
 
 /**
- * ミセテLP のプラン識別子。コンポーネント集（src/lib/plan.ts）は
- * 買い切りの2択だが、こちらは別サービスで料金体系も違うため独立させる。
- * 以前は PlanId を借りていたが、片方の値を変えるともう片方が壊れていた。
+ * ミセテLP のプラン識別子。コンポーネント集（src/lib/plan.ts）と同じ
+ * 「無料 / 買い切り」の2段だが、別サービスとして独立に持つ
+ * （片方の値を変えるともう片方が壊れる事故を避けるため）。
  */
-export type LpPlanId = "free" | "pro" | "studio";
+export type LpPlanId = "free" | "full";
 
 export interface LpPlanTier {
   id: LpPlanId;
   name: string;
+  /** 円。買い切りなので月額ではない。0 は無料。 */
+  price: number;
+  /** 価格の表示文字列（例 "¥9,800"） */
   priceLabel: string;
+  /** 価格に添える補助表記（例 "買い切り・税込"）。無料版は持たない。 */
+  priceNote?: string;
+  highlight?: boolean;
   features: string[];
 }
 
-/** ミセテLP で Pro 以上か（書き出し無制限・バッジ非表示の解放判定） */
-export function isLpPro(plan: LpPlanId): boolean {
-  return plan === "pro" || plan === "studio";
+/** ミセテLP の買い切り版を持っているか（バッジ非表示・OGP出力の解放判定） */
+export function isLpPaid(plan: LpPlanId): boolean {
+  return plan === "full";
 }
 
 export const LP_PLANS: readonly LpPlanTier[] = [
   {
     id: "free",
-    name: "Free",
+    name: "無料",
+    price: 0,
     priceLabel: "¥0",
     features: [
-      "書き出し：月3回まで",
-      "共有URL：無料・無制限",
-      "複数プロジェクト保存",
-      "フッターに「Made with ミセテLP」バッジ表示",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    priceLabel: "¥1,480/月",
-    features: [
-      "Free のすべて",
+      "4業種のテンプレート・写真・お客様の声まで全機能",
       "書き出し：無制限",
-      "バッジなし + OGP設定",
-      "商用利用ライセンス（1名）",
+      "共有URL：無制限",
+      "複数プロジェクト保存",
+      "フッターに「Made with ミセテLP」バッジが入る",
     ],
   },
   {
-    id: "studio",
-    name: "Studio",
-    priceLabel: "¥4,980/月",
+    id: "full",
+    name: "フル",
+    price: 9800,
+    priceLabel: "¥9,800",
+    priceNote: "買い切り・税込",
+    highlight: true,
     features: [
-      "Pro のすべて",
-      "複数ブランド・案件を管理（制作会社向け）",
-      "優先サポート",
-      "商用利用ライセンス（チーム）",
+      "無料版のすべて",
+      "フッターのバッジなし",
+      "OGP（SNSでの見え方）の設定",
+      "商用利用OK（自分のお店でもクライアント納品でも）",
+      "買い切り。これ以降の費用はかからない",
     ],
   },
 ] as const;
-
-/** Free プランの書き出し上限（月あたり） */
-export const FREE_MONTHLY_EXPORT_LIMIT = 3;
-
-const monthKey = () => `lp:exports:${new Date().toISOString().slice(0, 7)}`;
-
-/**
- * localStorage への書き込みが失敗する環境（プライベートブラウジング・容量超過等）向けの
- * フォールバックカウンタ。モジュールレベルのメモリ内カウンタのため、そのセッション
- * （ページを開いている間）だけ上限判定が効く。ページを開き直すとリセットされるため
- * 恒久的なクォータではないが、「フェイルオープンで無制限に書き出せてしまう」よりは安全側。
- */
-let memoryExportsFallback = 0;
-
-/** 今月の書き出し回数（localStorage 不在・壊れた値・負値は 0 扱いにクランプする） */
-export function getMonthExports(): number {
-  let stored = 0;
-  try {
-    stored = Math.max(0, Number(localStorage.getItem(monthKey()) ?? "0") || 0);
-  } catch {
-    stored = 0;
-  }
-  return Math.max(stored, memoryExportsFallback);
-}
-
-/** 今月の書き出し回数を1増やす。localStorage に書き込めない場合はメモリカウンタへ退避する。 */
-export function incMonthExports(): void {
-  try {
-    localStorage.setItem(monthKey(), String(getMonthExports() + 1));
-  } catch {
-    memoryExportsFallback += 1;
-  }
-}
 
 /** import.meta.env の値を、空文字を除いた string | undefined に正規化する */
 function envString(v: unknown): string | undefined {
   return typeof v === "string" && v.length > 0 ? v : undefined;
 }
 
-/** Stripe の決済リンク。未設定なら null（= デモモード）。 */
-export function getStripeLink(plan: "pro" | "studio"): string | null {
-  const raw =
-    plan === "pro"
-      ? import.meta.env.VITE_STRIPE_LINK_LP_PRO
-      : import.meta.env.VITE_STRIPE_LINK_LP_STUDIO;
-  return envString(raw) ?? null;
+/** Stripe の決済リンク（買い切り1本）。未設定なら null（= デモモード）。 */
+export function getStripeLink(): string | null {
+  return envString(import.meta.env.VITE_STRIPE_LINK_LP) ?? null;
 }
 
 /** 公開サイトのベースURL（共有URL・OGP生成に使用） */
@@ -117,6 +96,7 @@ const LP_PLAN_KEY = "lp:plan";
  * 既存 Studio の usePlan()（src/lib/plan.ts, キー "cs:plan"）と同じ実装パターン
  * （初期値をlocalStorageから読み出し・変更のたびに保存）を踏襲するが、キーを分離した
  * 別サービスの状態として独立に持つ（Studio 側の "cs:plan" には一切触れない）。
+ * 月額時代の値（"pro" / "studio"）が残っていても、既知でない値として "free" に倒れる。
  */
 export function useLpPlan(): {
   plan: LpPlanId;
@@ -125,11 +105,11 @@ export function useLpPlan(): {
   const [plan, setPlanState] = useState<LpPlanId>(() => {
     // Cookie／サイトデータを拒否した環境では localStorage は「未定義」ではなく
     // getter 自体が例外（SecurityError）を投げる。typeof ガードでは防げず、ここは
-    // LpBuilder の最初のフックのためページ全体が白画面になる。本ファイルの他の
-    // アクセス（getMonthExports / incMonthExports）と同じく握りつぶして既定値に倒す。
+    // LpBuilder の最初のフックのためページ全体が白画面になる。保存側（useEffect）と
+    // 同じく握りつぶして既定値に倒す。
     try {
       const v = localStorage.getItem(LP_PLAN_KEY) as LpPlanId | null;
-      return v === "pro" || v === "studio" || v === "free" ? v : "free";
+      return v === "full" || v === "free" ? v : "free";
     } catch {
       return "free";
     }

@@ -7,7 +7,6 @@ import { fileToCompressedDataUrl } from "./photo";
 import PhotoShowcase, { photoAspectClass } from "./sections/PhotoShowcase";
 import FormStep, { type AnswerEditor } from "./steps/FormStep";
 import { encodeShare, decodeShare, loadDraft, type ShareState } from "./share";
-import { FREE_MONTHLY_EXPORT_LIMIT, incMonthExports } from "./lpPlan";
 import {
   LP_TEMPLATES,
   clinicTemplate,
@@ -19,7 +18,7 @@ import type { LpAnswers } from "./types";
 /**
  * ミセテLP の統合テスト（仕様§13）。
  * ウィザードUIの実レンダリング・書き出しHTMLの中身・共有URL往復・
- * ルーティング・クォータ枯渇時のUI挙動を確認する。
+ * ルーティング・プラン（無料 / ¥9,800 買い切り）ごとのUI挙動を確認する。
  */
 
 // 写真の圧縮は canvas を使うため jsdom では動かない。取り込み後のUI（サムネイル・
@@ -406,9 +405,9 @@ describe("buildLpDocument", () => {
     tagline: "波音を聞きながら過ごす、静かな休日",
   };
 
-  it("free: ユーザー店名を含み・デモの初期文言は残らず・バッジあり・OGPなし", async () => {
+  it("無料版: ユーザー店名を含み・デモの初期文言は残らず・バッジあり・OGPなし", async () => {
     const html = await buildLpDocument(ryokanTemplate, customAnswers, {
-      pro: false,
+      paid: false,
     });
     expect(html).toContain("潮騒の宿かもめ");
     expect(html).not.toContain("月白の宿");
@@ -417,9 +416,9 @@ describe("buildLpDocument", () => {
     expect(html).not.toContain("cdn.tailwindcss.com");
   });
 
-  it("pro: バッジなし・OGPあり", async () => {
+  it("フル版（買い切り）: バッジなし・OGPあり", async () => {
     const html = await buildLpDocument(ryokanTemplate, customAnswers, {
-      pro: true,
+      paid: true,
     });
     expect(html).toContain("潮騒の宿かもめ");
     expect(html).not.toContain("月白の宿");
@@ -430,7 +429,7 @@ describe("buildLpDocument", () => {
 
   it("Tailwind CDN非依存: コンパイル済みCSSがインライン埋め込み・Google Fontsのlinkあり", async () => {
     const html = await buildLpDocument(ryokanTemplate, customAnswers, {
-      pro: false,
+      paid: false,
     });
     expect(html).not.toContain("cdn.tailwindcss.com");
     expect(html).toContain("fonts.googleapis.com");
@@ -441,7 +440,7 @@ describe("buildLpDocument", () => {
 
   it("バッジはフッター要素の内側（</footer>の直前）に挿入される", async () => {
     const html = await buildLpDocument(ryokanTemplate, customAnswers, {
-      pro: false,
+      paid: false,
     });
     const madeWithIdx = html.indexOf("Made with");
     const lastFooterOpenIdx = html.lastIndexOf("<footer");
@@ -454,7 +453,7 @@ describe("buildLpDocument", () => {
 
   it("CTAリンク化: ctaHref が tel: のとき <a href=\"tel:...\"> に変換され、ボタンは残らない", async () => {
     const answers: LpAnswers = { ...customAnswers, ctaHref: "tel:0460-00-0000" };
-    const html = await buildLpDocument(ryokanTemplate, answers, { pro: false });
+    const html = await buildLpDocument(ryokanTemplate, answers, { paid: false });
     expect(html).toContain("<a");
     expect(html).toContain('href="tel:0460-00-0000"');
     // ctaLabel を内包する <button>...</button> が1件も残っていないこと（ボタン単位で判定。
@@ -472,7 +471,7 @@ describe("buildLpDocument", () => {
       ...customAnswers,
       ctaHref: "javascript:alert(1)",
     };
-    const html = await buildLpDocument(ryokanTemplate, answers, { pro: false });
+    const html = await buildLpDocument(ryokanTemplate, answers, { paid: false });
     expect(html).not.toContain("javascript:");
   });
 });
@@ -528,10 +527,12 @@ function renderPreviewStep(onHome: () => void = () => {}) {
   return render(<LpBuilder onHome={onHome} />);
 }
 
-describe("クォータ枯渇時のUI挙動", () => {
+describe("無料プランの書き出し（回数の上限は無い）", () => {
   /** jsdom に navigator.clipboard は無いため差し替える */
   function stubClipboard() {
-    const clipboard = { writeText: vi.fn(async () => {}) };
+    const clipboard = {
+      writeText: vi.fn(async (_text: string) => {}),
+    };
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: clipboard,
@@ -539,52 +540,78 @@ describe("クォータ枯渇時のUI挙動", () => {
     return clipboard;
   }
 
-  it("月次上限に達した状態で共有URL復元 → 書き出しステップで上限表示が出る", () => {
-    // Free プランの上限まで書き出し済みにしておく
-    for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
+  it("無料のまま書き出しステップを開いても、ダウンロード・コピーは押せる", () => {
+    const { getByRole, getByText, queryByText } = renderExportStep();
 
-    const { getByText } = renderExportStep();
-
-    getByText(`今月の書き出し上限（${FREE_MONTHLY_EXPORT_LIMIT}回）に達しました。`);
-  });
-
-  it("上限に達したら「HTMLをコピー」も実行できない（ダウンロードの上限を迂回できない）", () => {
-    const clipboard = stubClipboard();
-    for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
-
-    const { getByRole, getByText } = renderExportStep();
-
-    const copy = getByRole("button", {
-      name: "HTMLをコピー",
-    }) as HTMLButtonElement;
-    expect(copy.disabled).toBe(true);
-    // 念のため押しても成果物は渡らない（ハンドラ側でも上限を判定している）
-    fireEvent.click(copy);
-    expect(clipboard.writeText).not.toHaveBeenCalled();
-    getByText(/HTMLのコピーもできません/);
-  });
-
-  it("「HTMLをコピー」でも書き出し回数を消費する", async () => {
-    const clipboard = stubClipboard();
-    // 残り1回の状態にする
-    for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT - 1; i++) incMonthExports();
-
-    const { getByRole, getByText, findByText } = renderExportStep();
-    const copy = getByRole("button", {
-      name: "HTMLをコピー",
-    }) as HTMLButtonElement;
-    expect(copy.disabled).toBe(false);
-
-    fireEvent.click(copy);
-    await findByText("HTMLをコピーしました");
-    expect(clipboard.writeText).toHaveBeenCalledTimes(1);
-
-    // 1回消費され、上限に達した表示へ変わる／以後はコピーもできない
-    getByText(`今月の書き出し上限（${FREE_MONTHLY_EXPORT_LIMIT}回）に達しました。`);
+    expect(
+      (getByRole("button", { name: "HTMLをダウンロード" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(false);
     expect(
       (getByRole("button", { name: "HTMLをコピー" }) as HTMLButtonElement)
         .disabled
-    ).toBe(true);
+    ).toBe(false);
+
+    // 無料版に伝えるのは「回数」ではなくバッジのこと
+    getByText(/書き出しは何回でもできます/);
+    expect(queryByText(/上限/)).toBeNull();
+  });
+
+  it("何回コピーしても止まらない（かつての月3回の上限を超えても押せる）", async () => {
+    const clipboard = stubClipboard();
+    const { getByRole, queryByText } = renderExportStep();
+
+    for (let i = 0; i < 4; i++) {
+      const copy = getByRole("button", {
+        name: "HTMLをコピー",
+      }) as HTMLButtonElement;
+      expect(copy.disabled).toBe(false);
+      fireEvent.click(copy);
+      await waitFor(() =>
+        expect(clipboard.writeText).toHaveBeenCalledTimes(i + 1)
+      );
+    }
+
+    expect(
+      (getByRole("button", { name: "HTMLをコピー" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(false);
+    expect(queryByText(/上限/)).toBeNull();
+  });
+
+  it("無料でコピーしたHTMLにはバッジが入り、フル版に切り替えると消える", async () => {
+    const clipboard = stubClipboard();
+    const { getByRole } = renderExportStep();
+
+    fireEvent.click(getByRole("button", { name: "HTMLをコピー" }));
+    await waitFor(() =>
+      expect(clipboard.writeText).toHaveBeenCalledTimes(1)
+    );
+    expect(clipboard.writeText.mock.calls[0][0]).toContain(
+      "Made with ミセテLP"
+    );
+
+    // 決済未接続のデモ切替でフル版にする
+    fireEvent.click(getByRole("button", { name: "デモモードでフル版を試す" }));
+    fireEvent.click(getByRole("button", { name: "HTMLをコピー" }));
+    await waitFor(() =>
+      expect(clipboard.writeText).toHaveBeenCalledTimes(2)
+    );
+    expect(clipboard.writeText.mock.calls[1][0]).not.toContain(
+      "Made with ミセテLP"
+    );
+  });
+});
+
+describe("書き出しステップの料金プラン表示", () => {
+  it("無料（¥0）と買い切り（¥9,800）の2枚だけが出て、月額表記は無い", () => {
+    const view = renderExportStep();
+
+    view.getByText("¥0");
+    view.getByText("¥9,800");
+    view.getByText("買い切り・税込");
+    expect(view.queryAllByText(/\/月/)).toHaveLength(0);
+    expect(view.queryAllByText(/アップグレード/)).toHaveLength(0);
   });
 });
 
@@ -757,7 +784,7 @@ describe("書き出しHTML: 暖簾ナビの屋号は書き出し専用のrawSwap
       shopName: "潮騒の宿かもめ",
     };
     const html = await buildLpDocument(ryokanTemplate, answers, {
-      pro: false,
+      paid: false,
     });
 
     expect(html).not.toContain("奥山亭");
@@ -777,21 +804,21 @@ describe("書き出しHTML: テストモニアルの架空人名は含まれな�
     const ryokanHtml = await buildLpDocument(
       ryokanTemplate,
       ryokanTemplate.defaults,
-      { pro: false }
+      { paid: false }
     );
     expect(ryokanHtml).not.toContain("高瀬 美和 様");
 
     const salonHtml = await buildLpDocument(
       salonTemplate,
       salonTemplate.defaults,
-      { pro: false }
+      { paid: false }
     );
     expect(salonHtml).not.toContain("三浦 美咲");
 
     const clinicHtml = await buildLpDocument(
       clinicTemplate,
       clinicTemplate.defaults,
-      { pro: false }
+      { paid: false }
     );
     expect(clinicHtml).not.toContain("三宅 玲奈");
   });
@@ -804,7 +831,7 @@ describe("書き出しHTML: クリニックテンプレのCTA（<a href=\"#\">�
       ctaHref: "tel:03-1234-5678",
     };
     const html = await buildLpDocument(clinicTemplate, answers, {
-      pro: false,
+      paid: false,
     });
 
     expect(html).toContain('href="tel:03-1234-5678"');
@@ -848,20 +875,19 @@ describe("ステップ移動でスクロール位置と読み上げ位置が戻�
   });
 });
 
-describe("上限到達時の「Proにアップグレード」", () => {
+describe("無料版の「バッジなしで書き出す」導線", () => {
   it("ビルダー内の料金プランへスクロールし、別サービスの料金ページへ遷移させない", () => {
-    for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
     const onHome = vi.fn();
     const scrollIntoView = vi
       .spyOn(Element.prototype, "scrollIntoView")
       .mockImplementation(() => {});
     try {
       const view = renderExportStep(onHome);
-      const upgrade = view.getByRole("button", {
-        name: /Proにアップグレード/,
+      const buy = view.getByRole("button", {
+        name: /バッジなしで書き出す/,
       });
 
-      fireEvent.click(upgrade);
+      fireEvent.click(buy);
 
       // 同じ画面の料金プランへ送られる（見出しへフォーカス + スクロール）
       const pricingHeading = view.getByRole("heading", { name: "料金プラン" });

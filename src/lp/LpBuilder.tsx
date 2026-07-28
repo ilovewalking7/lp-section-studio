@@ -10,14 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LP_TEMPLATES } from "./templates";
 import { buildLpDocument, downloadHtml } from "./export";
-import {
-  FREE_MONTHLY_EXPORT_LIMIT,
-  SITE_URL,
-  getMonthExports,
-  incMonthExports,
-  isLpPro,
-  useLpPlan,
-} from "./lpPlan";
+import { SITE_URL, isLpPaid, useLpPlan } from "./lpPlan";
 import {
   clearDraft,
   decodeShare,
@@ -118,7 +111,7 @@ export default function LpBuilder({ onHome }: LpBuilderProps) {
   // 内部で直接使う。Studio 側の usePlan()（src/lib/plan.ts, "cs:plan"）とはキーが独立した
   // 別サービスの状態のため混線しない。
   const { plan, setPlan } = useLpPlan();
-  const pro = isLpPro(plan);
+  const paid = isLpPaid(plan);
 
   const [initial] = useState(resolveInitialState);
   const [step, setStep] = useState<Step>(initial.step);
@@ -213,12 +206,6 @@ export default function LpBuilder({ onHome }: LpBuilderProps) {
     return () => clearTimeout(timer);
   }, [copiedShare]);
 
-  const remainingExports = Math.max(
-    0,
-    FREE_MONTHLY_EXPORT_LIMIT - getMonthExports()
-  );
-  const exportBlocked = !pro && remainingExports <= 0;
-
   /**
    * 失われる入力があるか。テンプレ適用時は t.defaults の参照をそのまま state に入れる
    * ため、参照が別物であれば「利用者が編集した」「ドラフト・共有URL・保存済みプロジェクト
@@ -295,13 +282,12 @@ export default function LpBuilder({ onHome }: LpBuilderProps) {
   };
 
   const handleDownload = async () => {
-    if (exportBlocked || downloading) return;
+    if (downloading) return;
     setExportError(null);
     setDownloading(true);
     try {
-      const html = await buildLpDocument(template, answers, { pro });
+      const html = await buildLpDocument(template, answers, { paid });
       downloadHtml(`${answers.shopName || "lp"}-lp.html`, html);
-      if (!pro) incMonthExports();
       setNotice("HTMLをダウンロードしました");
     } catch (e) {
       setExportError(e instanceof Error ? e.message : "書き出しに失敗しました");
@@ -310,16 +296,15 @@ export default function LpBuilder({ onHome }: LpBuilderProps) {
     }
   };
 
-  // HTMLのコピーはダウンロードと同一の成果物を渡す操作のため、ダウンロードと
-  // まったく同じ上限判定・回数消費を通す（片方だけ素通しでは唯一の収益ゲートが無効になる）。
+  // HTMLのコピーはダウンロードと同一の成果物を渡す操作のため、同じ条件（プラン）で
+  // 組み立てる。無料版はどちらの経路でもフッターのバッジが入る。
   const handleCopyHtml = async () => {
-    if (exportBlocked || copyingHtml) return;
+    if (copyingHtml) return;
     setExportError(null);
     setCopyingHtml(true);
     try {
-      const html = await buildLpDocument(template, answers, { pro });
+      const html = await buildLpDocument(template, answers, { paid });
       await navigator.clipboard.writeText(html);
-      if (!pro) incMonthExports();
       setNotice("HTMLをコピーしました");
     } catch (e) {
       setExportError(e instanceof Error ? e.message : "コピーに失敗しました");
@@ -444,9 +429,7 @@ export default function LpBuilder({ onHome }: LpBuilderProps) {
             answers={answers}
             status={{
               plan,
-              pro,
-              remainingExports,
-              exportBlocked,
+              paid,
               downloading,
               copyingHtml,
               copiedShare,

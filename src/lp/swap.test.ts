@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
-import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { escapeHtml, swapHtml, SwapBoundary } from "./swap";
 import { encodeShare, decodeShare, type ShareState } from "./share";
-import { FREE_MONTHLY_EXPORT_LIMIT, getMonthExports, incMonthExports } from "./lpPlan";
+import { LP_PLANS, isLpPaid } from "./lpPlan";
 import type { LpAnswers, Swap } from "./types";
 
 /** encodeShare を経由せず、任意の（型を満たさない）値をそのまま #c= 用に符号化する。 */
@@ -374,48 +374,35 @@ describe("encodeShare / decodeShare", () => {
   });
 });
 
-describe("月次クォータ（lpPlan）", () => {
-  beforeEach(() => {
-    localStorage.clear();
+describe("料金プラン（lpPlan）", () => {
+  it("無料 / 買い切り の2段だけを持つ", () => {
+    expect(LP_PLANS).toHaveLength(2);
+    expect(LP_PLANS.map((p) => p.id)).toEqual(["free", "full"]);
   });
 
-  it("月次キーで保存され、初期値は0", () => {
-    expect(getMonthExports()).toBe(0);
-    const monthKey = `lp:exports:${new Date().toISOString().slice(0, 7)}`;
-    expect(localStorage.getItem(monthKey)).toBeNull();
+  it("買い切り側は ¥9,800・買い切りである旨・強調フラグを持つ", () => {
+    const full = LP_PLANS[1];
+    expect(full.name).toBe("フル");
+    expect(full.price).toBe(9800);
+    expect(full.priceLabel).toBe("¥9,800");
+    expect(full.priceNote).toContain("買い切り");
+    expect(full.highlight).toBe(true);
+    expect(full.features.join("\n")).toContain("買い切り");
+    // 月額時代の表記が残っていない
+    expect(full.priceLabel).not.toContain("月");
+    expect(full.features.join("\n")).not.toContain("月額");
   });
 
-  it("incMonthExports のたびに1ずつ増える", () => {
-    incMonthExports();
-    expect(getMonthExports()).toBe(1);
-    incMonthExports();
-    incMonthExports();
-    expect(getMonthExports()).toBe(3);
+  it("無料側は ¥0 で、書き出しの回数制限を告知しない（上限は撤廃済み）", () => {
+    const free = LP_PLANS[0];
+    expect(free.price).toBe(0);
+    expect(free.priceLabel).toBe("¥0");
+    expect(free.features).toContain("書き出し：無制限");
+    expect(free.features.join("\n")).not.toContain("月3回");
   });
 
-  it("FREE_MONTHLY_EXPORT_LIMIT 回で上限に達する", () => {
-    for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
-    expect(getMonthExports()).toBe(FREE_MONTHLY_EXPORT_LIMIT);
-    expect(getMonthExports() >= FREE_MONTHLY_EXPORT_LIMIT).toBe(true);
-  });
-
-  it("localStorage の値が負でも0にクランプされる（フェイルオープン対策）", () => {
-    const monthKey = `lp:exports:${new Date().toISOString().slice(0, 7)}`;
-    localStorage.setItem(monthKey, "-5");
-    expect(getMonthExports()).toBe(0);
-  });
-
-  it("setItem が失敗する環境でもメモリカウンタへフォールバックし、セッション内は上限が効く", () => {
-    const spy = vi
-      .spyOn(Storage.prototype, "setItem")
-      .mockImplementation(() => {
-        throw new Error("QuotaExceededError（模擬）");
-      });
-    try {
-      for (let i = 0; i < FREE_MONTHLY_EXPORT_LIMIT; i++) incMonthExports();
-      expect(getMonthExports() >= FREE_MONTHLY_EXPORT_LIMIT).toBe(true);
-    } finally {
-      spy.mockRestore();
-    }
+  it("isLpPaid は買い切り版だけを true にする", () => {
+    expect(isLpPaid("free")).toBe(false);
+    expect(isLpPaid("full")).toBe(true);
   });
 });
