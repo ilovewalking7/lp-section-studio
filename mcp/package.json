@@ -1,0 +1,22 @@
+{
+  "name": "lp-section-studio-mcp",
+  "version": "0.1.0",
+  "description": "検証済みUIコンポーネントをMCP経由で取り出す（生成しない）。React不要の静的HTMLにも対応。",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "SEE LICENSE IN LICENSE",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  },
+  "type": "module",
+  "bin": {
+    "lp-section-studio-mcp": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "data",
+    "README.md"
+  ]
+}

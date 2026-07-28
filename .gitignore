@@ -24,3 +24,6 @@ dist-ssr/
 
 # 配信用レジストリ（npm run build / npm run registry で生成）
 public/r/
+
+# 静的HTMLは生成物（npm run html で作る）。6.7MB あるので配信物には含めない。
+public/html/

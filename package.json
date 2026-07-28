@@ -18,7 +18,9 @@
     "lp:css": "node scripts/build-lp-css.mjs",
     "test": "node scripts/build-manifest.mjs && node scripts/check-contrast.mjs --quiet && vitest run",
     "check:contrast": "node scripts/check-contrast.mjs",
-    "check:overflow": "node scripts/build-manifest.mjs && node scripts/check-overflow.mjs"
+    "check:overflow": "node scripts/build-manifest.mjs && node scripts/check-overflow.mjs",
+    "html": "node scripts/build-manifest.mjs && node scripts/build-static-html.mjs",
+    "mcp:bundle": "node scripts/build-mcp-bundle.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
