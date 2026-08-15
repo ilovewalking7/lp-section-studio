@@ -454,6 +454,7 @@ const COPY = {
     footerDocs: "ドキュメント",
     footerRegistry: "レジストリ",
     footerCopyright: "© 2026 LP Section Studio",
+    footerBy: "作った人：",
     footerNote: "すべてのセクションは自己完結・追加依存ゼロで設計されています。",
   },
   en: {
@@ -681,6 +682,7 @@ const COPY = {
     footerDocs: "Docs",
     footerRegistry: "Registry",
     footerCopyright: "© 2026 LP Section Studio",
+    footerBy: "Built by",
     footerNote:
       "Every section is self-contained and designed with zero extra dependencies.",
   },
@@ -1728,6 +1730,26 @@ export default function Landing({
 
           <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t pt-6 text-xs text-muted-foreground sm:flex-row">
             <p>{t.footerCopyright}</p>
+            {/* 作者への導線。ここが無いと、見つけてくれた人が作者に辿り着けない */}
+            <p className="inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              <span>{t.footerBy}</span>
+              <a
+                href="https://x.com/yoggydev"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline underline-offset-4 transition-colors hover:text-foreground"
+              >
+                X @yoggydev
+              </a>
+              <a
+                href="https://note.com/yoggydev"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline underline-offset-4 transition-colors hover:text-foreground"
+              >
+                note
+              </a>
+            </p>
             <p className="inline-flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
               {t.footerNote}

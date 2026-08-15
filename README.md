@@ -115,3 +115,33 @@ Reactコンポーネント集は、SEO重視の静的サイトや、既存のPHP
 ## ライセンス
 
 MIT。[LICENSE](LICENSE) を参照してください。
+
+---
+
+## Author
+
+**Yoggy** — solo developer. I build things with AI, then actually run them and
+measure before writing about them.
+
+- X: [@yoggydev](https://x.com/yoggydev)
+- Blog (Japanese): [note.com/yoggydev](https://note.com/yoggydev)
+- Live: [lp-section-studio.pages.dev](https://lp-section-studio.pages.dev)
+
+Other free tools:
+[stickman-video-director](https://github.com/ilovewalking7/stickman-video-director)
+(Claude Code skill, MIT) ·
+[Monilit](https://monilit.com) (multi-panel video player) ·
+[BIRIKABE](https://yoggydev.itch.io/birikabe) (browser puzzle game)
+
+If this saved you time, a ⭐ helps other people find it.
+
+---
+
+**日本語**
+
+**Yoggy** — 個人開発者。AIで作って、実際に動かして確かめたことだけ書いています。
+
+- X: [@yoggydev](https://x.com/yoggydev)
+- note: [note.com/yoggydev](https://note.com/yoggydev)
+
+役に立ったら ⭐ をもらえると、他の人にも届きやすくなります。
