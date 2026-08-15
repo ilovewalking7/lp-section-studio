@@ -1,92 +1,42 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import Studio from "./Studio";
 import { registry } from "@/registry";
-import { isFreeComponent } from "@/lib/free";
-import { FREE_EDITION_COUNT } from "@/registry/freeCount";
 
 /**
- * スタジオの「無料100個」絞り込みの振る舞いテスト。
- * 880個のうちどれが無料版に入っているのかを画面から判別できること
- * （トグル・バッジ・件数表示）を固定する。
+ * スタジオが「全コンポーネント無料・課金要素なし」であることの契約テスト。
+ *
+ * 以前は無料100個 / 買い切り880個の二重構成だったが、MIT で全公開したため
+ * 課金導線は撤去した。ここでは **課金要素が復活していないこと** を固定する。
  */
 afterEach(() => cleanup());
 
-const FREE_LABEL = `無料${FREE_EDITION_COUNT}個`;
-
 function renderStudio() {
   return render(
-    <Studio
-      plan="free"
-      lang="ja"
-      setLang={() => {}}
-      onHome={() => {}}
-      onPricing={() => {}}
-    />
+    <Studio lang="ja" setLang={() => {}} onHome={() => {}} />
   );
 }
 
-const toggle = () => screen.getByRole("button", { name: FREE_LABEL });
-
-/** 無料版に入っていない側の代表（名前が無料版と重複しないものを選ぶ） */
-const paidEntry = registry.find(
-  (e) =>
-    !isFreeComponent(e.id) &&
-    !registry.some((o) => o.name === e.name && isFreeComponent(o.id))
-)!;
-const freeEntry = registry.find((e) => isFreeComponent(e.id))!;
-
-describe("スタジオの無料100個フィルタ", () => {
-  it("トグルを押すと無料版の100個だけになり、件数とバッジが出る", () => {
+describe("スタジオに課金要素が無い", () => {
+  it("全コンポーネントが対象で、絞り込みの初期状態で件数が全件と一致する", () => {
     renderStudio();
-    // 実 button + aria-pressed（支援技術に ON/OFF が伝わること）
-    expect(toggle().tagName).toBe("BUTTON");
-    expect(toggle().getAttribute("aria-pressed")).toBe("false");
-    expect(screen.queryAllByText(paidEntry.name).length).toBeGreaterThan(0);
-
-    fireEvent.click(toggle());
-
-    expect(toggle().getAttribute("aria-pressed")).toBe("true");
-    expect(screen.queryAllByText(paidEntry.name)).toHaveLength(0);
-    expect(screen.queryAllByText(freeEntry.name).length).toBeGreaterThan(0);
-    // 「無料100個のうち 100 件」
-    expect(
-      screen.getAllByText(`${FREE_LABEL}のうち ${FREE_EDITION_COUNT} 件`).length
-    ).toBeGreaterThan(0);
-    // 無料版のカードにだけ付くバッジ（読み上げは「無料版に含まれます」）
-    const badges = screen.getAllByText("無料");
-    expect(badges).toHaveLength(FREE_EDITION_COUNT);
-    expect(badges[0].textContent).toBe("無料版に含まれます");
+    expect(registry.length).toBeGreaterThan(800);
+    // 件数表示に全件数が出ている（無料版だけに絞られていない）
+    expect(screen.getAllByText(new RegExp(String(registry.length))).length).toBeGreaterThan(0);
   });
 
-  it("検索と AND で併用できる", () => {
+  it("無料/有料を分ける UI が存在しない", () => {
     renderStudio();
-    fireEvent.click(toggle());
-    fireEvent.change(screen.getByPlaceholderText("検索（名前・タグ）..."), {
-      target: { value: "hero" },
-    });
-
-    const expected = registry.filter(
-      (e) =>
-        isFreeComponent(e.id) &&
-        [e.name, e.description, e.category, ...(e.tags ?? [])]
-          .join(" ")
-          .toLowerCase()
-          .includes("hero")
-    ).length;
-
-    expect(expected).toBeGreaterThan(0);
-    expect(expected).toBeLessThan(FREE_EDITION_COUNT);
-    expect(
-      screen.getAllByText(`${FREE_LABEL}のうち ${expected} 件`).length
-    ).toBeGreaterThan(0);
-    expect(screen.getAllByText("無料")).toHaveLength(expected);
+    for (const label of [/無料\d+個/, /^料金$/, /Pro にアップグレード/, /本日のコピー上限/]) {
+      expect(screen.queryAllByText(label), `${label} が残っている`).toHaveLength(0);
+    }
   });
 
-  it("月額を前提にした統計表示が残っていない", () => {
-    renderStudio();
-    expect(screen.queryByText("あなたの月額")).toBeNull();
-    expect(screen.queryByText("¥0")).toBeNull();
-    expect(screen.getByText("無料で使える数")).toBeTruthy();
+  it("価格・プランの文字列が画面に出ていない", () => {
+    const { container } = renderStudio();
+    const text = container.textContent ?? "";
+    for (const word of ["¥9,800", "買い切り", "全部入り", "アップグレード"]) {
+      expect(text, `「${word}」が残っている`).not.toContain(word);
+    }
   });
 });

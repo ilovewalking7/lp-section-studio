@@ -1,133 +1,21 @@
-LP Section Studio ライセンス
+MIT License
 
-本製品には 2 つの版があります。適用される条件は版ごとに異なります。
-自分がどちらを持っているかは、同梱の components.json の "edition"
-（free / full）、または入手経路（無料 MCP か、BOOTH での購入か）で判断できます。
+Copyright (c) 2026 Yoggy (@yoggydev)
 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-================================================================
-【無料版】MCP サーバ経由で提供される 100 個
-================================================================
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-・個人利用・非商用の範囲で利用できます。
-・利用者が作った成果物の所有権は、利用者にあります。
-・コンポーネント自体をそのまま再配布・再販することはできません。
-・商用利用（受託制作、自社プロダクト、収益を伴うウェブサイトを含む）
-  には、買い切り版のライセンスが必要です。
-
-
-================================================================
-【買い切り版】880 個（BOOTH で購入したパッケージ）
-================================================================
-
-購入者は、本製品に含まれるコンポーネント（ソースコード・静的HTML・
-レジストリJSON を含む）について、以下の範囲で利用できます。
-
-【できること】
-・商用・非商用を問わず、無制限の数のプロジェクトで利用すること
-・自身または自社のために制作するウェブサイト・アプリケーションに
-  組み込むこと
-・受託制作において、クライアントに納品する成果物に組み込むこと
-・コンポーネントを改変して利用すること
-
-【できないこと】
-・本製品そのもの、またはその一部を、コンポーネント集・テンプレート集
-  として再配布・再販すること
-・本製品を、これと競合する製品（UIコンポーネント集、UIキット等）の
-  素材として利用すること
-・購入していない第三者に、ソースコード一式を共有すること
-
-【購入者の範囲】
-1ライセンスにつき、個人1名または法人内の1チーム（5名まで）が
-利用できます。
-
-
-================================================================
-【保証】（無料版・買い切り版の両方に適用）
-================================================================
-
-本製品は現状有姿で提供されます。特定目的への適合性を含め、明示・
-黙示を問わず、いかなる保証も行いません。本製品の利用により生じた
-いかなる損害についても、作者は責任を負いません。
-
-
-================================================================
-【第三者ソフトウェア】
-================================================================
-
-本製品のコンポーネントは react / lucide-react / clsx / tailwind-merge、
-および Tailwind CSS を前提としています。これらは本製品には含まれず、
-それぞれの配布元のライセンス（いずれも MIT）が適用されます。
-
-
---- English ---
-
-LP Section Studio License
-
-This product comes in two editions. The applicable terms differ by edition.
-You can tell which one you have from the "edition" field in the bundled
-components.json (free / full), or from how you obtained it (the free MCP
-server, or a purchase on BOOTH).
-
-
-================================================================
-[Free edition] The 100 components served through the MCP server
-================================================================
-
-- May be used for personal, non-commercial purposes only.
-- You own the work you create with it.
-- You may not redistribute or resell the components themselves.
-- Commercial use (including client work, in-house products, and any
-  revenue-generating website) requires a paid-edition license.
-
-
-================================================================
-[Paid edition] The 880 components (the package purchased on BOOTH)
-================================================================
-
-The purchaser may use the components included in this product (including
-source code, static HTML, and registry JSON) within the following scope.
-
-[You may]
-- Use them in an unlimited number of projects, commercial or not
-- Incorporate them into websites and applications you build for yourself
-  or for your own company
-- Incorporate them into deliverables handed to clients in contract work
-- Modify the components and use the modified versions
-
-[You may not]
-- Redistribute or resell this product, or any part of it, as a component
-  collection or template collection
-- Use this product as material for a competing product (a UI component
-  collection, UI kit, or similar)
-- Share the full source with third parties who have not purchased it
-
-[Scope of the license]
-One license covers one individual, or one team within a company
-(up to 5 people).
-
-
-================================================================
-[Warranty] (applies to both the free and paid editions)
-================================================================
-
-This product is provided "as is". No warranty of any kind, express or
-implied, including fitness for a particular purpose, is given. The author
-is not liable for any damages arising from the use of this product.
-
-
-================================================================
-[Third-party software]
-================================================================
-
-The components assume react / lucide-react / clsx / tailwind-merge and
-Tailwind CSS. These are not included in this product and remain subject to
-their own licenses (all MIT).
-
-
-注記 / Note:
-本ライセンスは日本語版を正文とします。英訳は参考であり、日本語版との
-間に相違がある場合は日本語版が優先します。
-The Japanese text is the governing version. The English translation is
-provided for reference; in case of any discrepancy, the Japanese text
-prevails.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

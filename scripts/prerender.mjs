@@ -4,7 +4,7 @@
 // 目的:
 //   - 空の <div id="root"> しか無い SPA を、クローラ／JS無効環境でも読める
 //     “中身入り HTML” にする（SEO 対策の核）。
-//   - ハッシュではなくパス（/, /pricing, /studio）で個別 URL を持たせる。
+//   - ハッシュではなくパス（/, /studio）で個別 URL を持たせる。
 //
 // クライアントは createRoot で改めて描画するため、ここで埋めた HTML は
 // あくまで初期 HTML（クローラ向け）。ハイドレーションはしない。
@@ -29,19 +29,9 @@ const ROUTES = [
     ssr: "home",
     robots: "index, follow",
     url: `${ORIGIN}/`,
-    title: "LP Section Studio — React が要らない現場でも使える UI 部品 880",
+    title: "LP Section Studio — React が要らない現場でも使える UI 部品 880（MIT・無料）",
     description:
-      "880 コンポーネント。うち 397 個は React も Babel も含まない静的 HTML として書き出せるので、PHP・Rails・Hugo・WordPress にもそのまま貼れます。全件が a11y・コントラスト・キーボード・横スクロールの4検査をCIで毎回通過。買い切り ¥9,800。",
-  },
-  {
-    route: "pricing",
-    out: "pricing/index.html",
-    ssr: "pricing",
-    robots: "index, follow",
-    url: `${ORIGIN}/pricing`,
-    title: "料金 — 買い切り ¥9,800 | LP Section Studio",
-    description:
-      "月額はありません。買い切り ¥9,800 で 880 コンポーネントすべて。うち 397 個は React 不要の静的 HTML として使えます。a11y・コントラスト・キーボード・横スクロールの4検査をCIで毎回通過。無料版は MCP から100個。",
+      "880 コンポーネントすべて MIT ライセンスで無料。うち 397 個は React も Babel も含まない静的 HTML として書き出せるので、PHP・Rails・Hugo・WordPress にもそのまま貼れます。全件が a11y・コントラスト・キーボード・横スクロールの4検査をCIで毎回通過。MCP サーバー同梱。",
   },
   {
     route: "studio",

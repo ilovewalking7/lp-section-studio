@@ -17,12 +17,12 @@ function randomSecret() {
   const chars = "abcdef0123456789";
   let s = "";
   for (let i = 0; i < 32; i++) s += chars[Math.floor(Math.random() * chars.length)];
-  return `sk_live_${s}`;
+  return `sk_demo_${s}`;
 }
 
 const INITIAL: KeyItem[] = [
-  { id: "1", label: "Production", envJa: "本番", envEn: "Live", secret: "sk_live_9f3a7c21b8e04d65a1f2c9b7e3d4801f" },
-  { id: "2", label: "Development", envJa: "開発", envEn: "Dev", secret: "sk_test_2a8b1d40e7f93c56b0a4d8e1f6c70293" },
+  { id: "1", label: "Production", envJa: "本番", envEn: "Live", secret: "sk_demo_0000000000000000000000000000" },
+  { id: "2", label: "Development", envJa: "開発", envEn: "Dev", secret: "sk_demo_1111111111111111111111111111" },
 ];
 
 function mask(secret: string) {

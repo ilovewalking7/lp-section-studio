@@ -15,7 +15,6 @@ import {
   GalleryHorizontalEnd,
   Gamepad2,
   Gem,
-  Gift,
   Github,
   Home,
   Move,
@@ -61,10 +60,7 @@ import { GalleryView } from "@/components/GalleryView";
 import { registry, categories } from "@/registry";
 import { tCategory, tName } from "@/registry/i18n";
 import { THEME_CATEGORIES } from "@/lib/stats";
-import { isFreeComponent } from "@/lib/free";
 import { variantLabel } from "@/lib/variant";
-import { FREE_EDITION_COUNT } from "@/registry/freeCount";
-import { type PlanId } from "@/lib/plan";
 import { type Lang } from "@/lib/i18n";
 
 const CATEGORY_ICONS: Record<string, typeof Boxes> = {
@@ -152,10 +148,6 @@ const STUDIO_COPY = {
     statSections: "LPセクション",
     statStyles: "デザインスタイル",
     statCategories: "カテゴリ",
-    statFree: "無料で使える数",
-    freeFilter: `無料${FREE_EDITION_COUNT}個`,
-    freeFilterHint: `無料版（MCP）に含まれる ${FREE_EDITION_COUNT} 個だけを表示する`,
-    freeOf: (n: number) => `無料${FREE_EDITION_COUNT}個のうち ${n} 件`,
     distribute: "コピペ・shadcn add・バニラHTML、3経路で配布",
     advancedTitle: (n: number) => `${n} 個の上級コンポーネント`,
     advancedBody:
@@ -183,10 +175,6 @@ const STUDIO_COPY = {
     statSections: "LP sections",
     statStyles: "Design styles",
     statCategories: "Categories",
-    statFree: "Free to use",
-    freeFilter: `Free ${FREE_EDITION_COUNT}`,
-    freeFilterHint: `Show only the ${FREE_EDITION_COUNT} components included in the free (MCP) edition`,
-    freeOf: (n: number) => `${n} of the ${FREE_EDITION_COUNT} free components`,
     distribute: "Copy-paste · shadcn add · vanilla HTML — 3 ways to ship",
     advancedTitle: (n: number) => `${n} advanced components`,
     advancedBody:
@@ -324,22 +312,17 @@ function FilterChip({
 }
 
 export default function Studio({
-  plan,
   lang,
   setLang,
   onHome,
-  onPricing,
 }: {
-  plan: PlanId;
   lang: Lang;
   setLang: (l: Lang) => void;
   onHome: () => void;
-  onPricing: () => void;
 }) {
   const s = STUDIO_COPY[lang];
   const [query, setQuery] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
-  const [onlyFree, setOnlyFree] = useState(false);
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [activeId, setActiveId] = useState(registry[0]?.id);
   const [view, setView] = useState<"detail" | "gallery">("gallery");
@@ -354,9 +337,8 @@ export default function Studio({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return registry.filter((e) => {
-      // 検索・カテゴリ・お気に入り・無料版はすべて AND で効く
+      // 検索・カテゴリ・お気に入りはすべて AND で効く
       if (onlyFavs && !favs.includes(e.id)) return false;
-      if (onlyFree && !isFreeComponent(e.id)) return false;
       if (catFilter && e.category !== catFilter) return false;
       if (!q) return true;
       return (
@@ -366,12 +348,9 @@ export default function Studio({
         (e.tags ?? []).some((t) => t.toLowerCase().includes(q))
       );
     });
-  }, [query, onlyFavs, onlyFree, catFilter, favs]);
+  }, [query, onlyFavs, catFilter, favs]);
 
-  // 件数表示（無料版で絞り込み中は「無料100個のうち n 件」）
-  const countLabel = onlyFree
-    ? s.freeOf(filtered.length)
-    : s.shown(filtered.length);
+  const countLabel = s.shown(filtered.length);
 
   const active =
     registry.find((e) => e.id === activeId) ?? filtered[0] ?? registry[0];
@@ -432,18 +411,6 @@ export default function Studio({
           <Badge variant="secondary" className="hidden lg:inline-flex">
             {registry.length} sections
           </Badge>
-          <button
-            onClick={onPricing}
-            className={cn(
-              "hidden rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide lg:inline-flex",
-              plan === "free"
-                ? "bg-muted text-foreground/70"
-                : "bg-violet-500/15 text-violet-500"
-            )}
-            title={s.viewPlan}
-          >
-            {plan}
-          </button>
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <div className="flex rounded-md border p-0.5">
               <Button
@@ -477,16 +444,8 @@ export default function Studio({
             >
               <Home /> {s.home}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onPricing}
-              className="hidden md:flex"
-            >
-              <Tag /> {s.pricing}
-            </Button>
             <a
-              href="https://github.com/ilovewalking7/app-035"
+              href="https://github.com/ilovewalking7/lp-section-studio"
               target="_blank"
               rel="noreferrer"
               className="hidden items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground lg:flex"
@@ -500,16 +459,10 @@ export default function Studio({
               items={[
                 { key: "home", icon: Home, label: s.home, onSelect: onHome },
                 {
-                  key: "pricing",
-                  icon: Tag,
-                  label: s.pricing,
-                  onSelect: onPricing,
-                },
-                {
                   key: "repo",
                   icon: Github,
                   label: s.repo,
-                  href: "https://github.com/ilovewalking7/app-035",
+                  href: "https://github.com/ilovewalking7/lp-section-studio",
                 },
               ]}
             />
@@ -644,7 +597,6 @@ export default function Studio({
             <Stat value={`${registry.length}+`} label={s.statSections} />
             <Stat value={`${styleCount}`} label={s.statStyles} />
             <Stat value={`${categories.length}`} label={s.statCategories} />
-            <Stat value={`${FREE_EDITION_COUNT}`} label={s.statFree} />
             <span className="ml-auto hidden text-xs text-muted-foreground lg:block">
               {s.distribute}
             </span>
@@ -652,17 +604,6 @@ export default function Studio({
 
           {/* スタイル/カテゴリのフィルタチップ（探しやすさ） */}
           <div className="mb-2 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
-            {/* 無料版に入っている100個だけを見る（カテゴリとは別軸なので区切り線を挟む） */}
-            <FilterChip
-              active={onlyFree}
-              pressed={onlyFree}
-              title={s.freeFilterHint}
-              onClick={() => setOnlyFree((v) => !v)}
-            >
-              <Gift className="size-3.5" />
-              {s.freeFilter}
-            </FilterChip>
-            <span aria-hidden className="my-1 w-px shrink-0 bg-border" />
             <FilterChip
               active={catFilter === null}
               onClick={() => setCatFilter(null)}
@@ -711,12 +652,7 @@ export default function Studio({
                   <ChevronLeft className="size-4" /> {s.back}
                 </Button>
               )}
-              <PreviewCanvas
-                entry={active}
-                plan={plan}
-                lang={lang}
-                onUpgrade={onPricing}
-              />
+              <PreviewCanvas entry={active} lang={lang} />
               <div className="mt-10 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
                   <p className="flex items-center gap-1.5 font-medium text-foreground">

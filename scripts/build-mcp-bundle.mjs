@@ -1,7 +1,7 @@
 /**
  * MCP サーバに同梱するデータを作る。
  *
- * 無料版は 100 個。全 880 個は買い切り版に入る。無料版を配る狙いは
+ * MIT で全公開したため、常に全 880 個を同梱する。狙いは
  * 「見つけてもらう」ことなので、選び方には意図がある:
  *
  *   1. React 無しで動くもの（standalone）を優先する。
@@ -11,8 +11,7 @@
  *      「どんな種類があるか」が無料枠だけで分かるようにする。
  *   3. 各カテゴリ内では名前順。実行のたびに中身が変わらないようにする。
  *
- *   node scripts/build-mcp-bundle.mjs            無料版（100個）
- *   node scripts/build-mcp-bundle.mjs --all      全部（買い切り版の同梱用）
+ *   node scripts/build-mcp-bundle.mjs           全 880 個を同梱（MIT・無料）
  *
  * 出力: mcp/data/components.json
  */
@@ -20,7 +19,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 
 const ROOT = process.cwd();
-const ALL = process.argv.includes("--all");
+// MIT で全公開したため、MCP には常に全件を同梱する（無料枠の概念は廃止）。
+const ALL = true;
 const FREE_LIMIT = 100;
 const PER_CATEGORY = 4;
 const HTML_DIR = resolve(ROOT, "public/html");
@@ -107,7 +107,7 @@ writeFileSync(
 
 const bytes = readFileSync(OUT).length;
 console.log(
-  `mcp/data/components.json を作りました（${ALL ? "全部" : "無料版"}）\n` +
+  `mcp/data/components.json を作りました（全 ${items.length} 件）\n` +
     `  収録: ${items.length} / ${manifest.length} 件\n` +
     `  うち React 不要: ${items.filter((i) => i.standalone).length} 件\n` +
     `  カテゴリ: ${new Set(items.map((i) => i.category)).size} 種\n` +

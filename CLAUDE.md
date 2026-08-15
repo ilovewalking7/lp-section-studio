@@ -1,9 +1,9 @@
 # CLAUDE.md — このリポジトリで作業する Claude への案内
 
-このリポジトリには **Component Studio** が入っています。**260個以上の本番品質 React コンポーネント**を貯めた、自分専用のコンポーネント・ライブラリ（21st.dev / Magic の無料代替）です。
+このリポジトリには **Component Studio** が入っています。**880個の本番品質 UI コンポーネント**を貯めた、MIT ライセンスで公開しているコンポーネント・ライブラリです。397個は React 不要の静的HTMLとしても書き出せます。
 スタック: **Vite + React 18 + TypeScript(strict) + Tailwind CSS v3**。
 
-UIを作る依頼（ページ・画面・セクション・カード等）を受けたら、**まず既存の260個から流用できないか確認**してください。ゼロから書く前に下記の手順で探します。
+UIを作る依頼（ページ・画面・セクション・カード等）を受けたら、**まず既存の880個から流用できないか確認**してください。ゼロから書く前に下記の手順で探します。
 
 ---
 
@@ -61,7 +61,7 @@ export default function MyCard() {
 
 ## 3. 構成とコマンド
 
-- `src/registry/demos/<カテゴリ>/*.tsx` … 1ファイル=1コンポーネント（260個）
+- `src/registry/demos/<カテゴリ>/*.tsx` … 1ファイル=1コンポーネント（880個）
 - `src/registry/manifest.ts` … 自動生成の索引（**探索はここから**）／`src/registry/index.ts` … 実行時レジストリ（遅延ロード）
 - `src/components/ui/*` … 再利用UIプリミティブ（shadcn 規約）
 - `public/r/*.json` … shadcn 互換の配信用（`npm run registry` で生成。他repoから `npx shadcn add <url>` 可）

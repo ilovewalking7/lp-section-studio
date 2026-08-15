@@ -8,7 +8,6 @@ import {
 } from "react";
 import { Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isFreeComponent } from "@/lib/free";
 import { variantLabel } from "@/lib/variant";
 import type { RegistryEntry } from "@/registry";
 import { tCategory, tName } from "@/registry/i18n";
@@ -165,16 +164,6 @@ function GalleryCard({
             {entry.isNew && (
               <span className="rounded bg-emerald-500/15 px-1 text-[10px] font-medium text-emerald-500">
                 NEW
-              </span>
-            )}
-            {/* 無料版（MCP の100個）に入っている印。NEW と並んでも読めるよう色だけ変える */}
-            {isFreeComponent(entry.id) && (
-              <span className="shrink-0 rounded bg-sky-500/15 px-1 text-[10px] font-medium text-sky-500">
-                {lang === "ja" ? "無料" : "Free"}
-                {/* 「無料版に含まれます」/「Free edition」と読み上げさせる */}
-                <span className="sr-only">
-                  {lang === "ja" ? "版に含まれます" : " edition"}
-                </span>
               </span>
             )}
           </div>

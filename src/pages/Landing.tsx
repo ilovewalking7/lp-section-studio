@@ -37,9 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LangToggle } from "@/components/LangToggle";
 import { Phrased } from "@/components/Phrased";
 import { cn } from "@/lib/utils";
-import { getPlans } from "@/lib/plan";
 // 数字だけ要るので、ID 一覧を巻き込まないよう生成物から直接読む（LP の初期チャンク対策）
-import { FREE_EDITION_COUNT } from "@/registry/freeCount";
 import type { Lang } from "@/lib/i18n";
 
 // --- Dogfooding: 実在の本物の3Dコンポーネントをそのまま読み込んで埋め込む ---
@@ -235,13 +233,13 @@ const COPY = {
     // 狭いヘッダー用の短縮ブランド名
     brandShort: "LP Studio",
     navFeatures: "機能",
-    navPricing: "料金",
+    navPricing: "GitHub",
     navStudio: "スタジオ",
     navOpenStudio: "スタジオを開く",
     ctaTryFree: "無料で使ってみる",
     // 狭いヘッダー用の短いラベル
     ctaTryFreeShort: "無料で試す",
-    ctaSeePricing: "料金を見る",
+    ctaSeePricing: "GitHub で見る",
     backToTop: "上に戻る",
 
     themeLabelAurora: "オーロラ",
@@ -412,24 +410,17 @@ const COPY = {
       },
     ],
 
-    pricingBadge: "料金",
-    pricingHeading: "¥0からはじめて、|必要なときに。",
-    pricingSub:
-      "個人の試用から、|チームの制作現場まで。|無料版と買い切り版の|2つだけです。",
-    pricingRecommended: "おすすめ",
-    pricingChoose: "選ぶ",
-    pricingSeeDetails: "料金の詳細を見る",
 
     faqBadge: "FAQ",
     faqHeading: "よくある質問",
     faqs: [
       {
         q: "ライセンスはどうなっていますか？",
-        a: "Free プランは個人・非商用での利用が対象です。Pro 以上にアップグレードすると、生成したコードを自分のプロジェクトで自由に使える商用利用ライセンスが付与されます。",
+        a: "MIT ライセンスです。商用・非商用を問わず自由に使えます。改変も再配布も可能で、クレジット表記も不要です（ライセンス文の同梱のみ必要）。",
       },
       {
         q: "商用プロジェクトで使えますか？",
-        a: "はい。Pro（1名）または Studio（チーム5席）の商用利用ライセンスで、クライアントワークや自社プロダクトにそのまま組み込めます。",
+        a: "はい。MIT なので、クライアントワークにも自社プロダクトにもそのまま組み込めます。人数やプロジェクト数の制限はありません。",
       },
       {
         q: "他のリポジトリではどう使いますか？",
@@ -457,7 +448,7 @@ const COPY = {
     footerTaglineLead: "LP を完成させる、",
     footerTaglineTail: " のコピペ可能なセクションと3Dパーツ。",
     footerFeatures: "機能",
-    footerPricing: "料金",
+    footerPricing: "GitHub",
     footerStudio: "スタジオ",
     footerGithub: "GitHub",
     footerDocs: "ドキュメント",
@@ -469,12 +460,12 @@ const COPY = {
     brand: "LP Section Studio",
     brandShort: "LP Studio",
     navFeatures: "Features",
-    navPricing: "Pricing",
+    navPricing: "GitHub",
     navStudio: "Studio",
     navOpenStudio: "Open Studio",
     ctaTryFree: "Try it free",
     ctaTryFreeShort: "Try free",
-    ctaSeePricing: "See pricing",
+    ctaSeePricing: "View on GitHub",
     backToTop: "Back to top",
 
     themeLabelAurora: "Aurora",
@@ -646,24 +637,17 @@ const COPY = {
       },
     ],
 
-    pricingBadge: "Pricing",
-    pricingHeading: "Start free, upgrade when you need to.",
-    pricingSub:
-      "From solo trials to a team's production floor — just two: free and pay-once.",
-    pricingRecommended: "Recommended",
-    pricingChoose: "Choose",
-    pricingSeeDetails: "See full pricing",
 
     faqBadge: "FAQ",
     faqHeading: "Frequently asked questions",
     faqs: [
       {
         q: "How does licensing work?",
-        a: "The Free plan is for personal, non-commercial use. Upgrading to Pro or above grants a commercial license to freely use the generated code in your own projects.",
+        a: "MIT. Use it commercially or not, modify it, redistribute it. No attribution required beyond including the license text.",
       },
       {
         q: "Can I use it on commercial projects?",
-        a: "Yes. With a commercial license on Pro (1 user) or Studio (team, 5 seats), you can drop it straight into client work or your own products.",
+        a: "Yes. It is MIT, so you can drop it into client work or your own products. No seat or project limits.",
       },
       {
         q: "How do I use it in other repositories?",
@@ -691,7 +675,7 @@ const COPY = {
     footerTaglineLead: "Everything to finish your LP: ",
     footerTaglineTail: " copy-paste sections and 3D parts.",
     footerFeatures: "Features",
-    footerPricing: "Pricing",
+    footerPricing: "GitHub",
     footerStudio: "Studio",
     footerGithub: "GitHub",
     footerDocs: "Docs",
@@ -704,19 +688,19 @@ const COPY = {
 
 /* ------------------------------------------------------------------ */
 
+const REPO_URL = "https://github.com/ilovewalking7/lp-section-studio";
+
 export default function Landing({
   stats,
   lang = "ja",
   setLang,
   onOpenStudio,
-  onOpenPricing,
 }: {
   stats: { components: number; styles: number; categories: number };
   lang?: Lang;
   /** 渡されたときだけヘッダーに言語切替を出す（テスト等の簡易利用では省略可） */
   setLang?: (l: Lang) => void;
   onOpenStudio: () => void;
-  onOpenPricing: () => void;
 }) {
   const t = COPY[lang];
   const reduced = usePrefersReducedMotion();
@@ -772,7 +756,6 @@ export default function Landing({
   const cComponents = useCountUp(stats.components, reduced);
   const cStyles = useCountUp(stats.styles, reduced);
   const cCategories = useCountUp(stats.categories, reduced);
-  const cFree = useCountUp(FREE_EDITION_COUNT, reduced);
 
   const themeLabel = (id: HeroTheme): string =>
     id === "aurora"
@@ -785,7 +768,6 @@ export default function Landing({
     { key: "components", value: `${cComponents}+`, label: t.statSections },
     { key: "styles", value: `${cStyles}`, label: t.statStyles },
     { key: "categories", value: `${cCategories}`, label: t.statCategories },
-    { key: "free", value: `${cFree}`, label: t.statFreeLabel },
   ];
 
   /* ----- データ ----- */
@@ -934,25 +916,6 @@ export default function Landing({
     a: f.a,
   }));
 
-  const plans = getPlans(lang);
-
-  /** 買い切りなので「/月」は付けない。0 円は無料表記。 */
-  const priceLabel = (price: number) =>
-    price === 0
-      ? lang === "ja"
-        ? "¥0"
-        : "Free"
-      : `¥${price.toLocaleString("ja-JP")}`;
-
-  /** 価格の横に添える但し書き（無料 / 買い切り） */
-  const priceSuffix = (price: number) =>
-    price === 0
-      ? lang === "ja"
-        ? "登録不要"
-        : "no sign-up"
-      : lang === "ja"
-        ? "買い切り"
-        : "one time";
 
   const heroGlowStyle: CSSProperties = {
     background: `radial-gradient(420px circle at ${glow.x}% ${glow.y}%, ${theme.glow}, transparent 70%)`,
@@ -1035,7 +998,7 @@ export default function Landing({
             </a>
             <button
               type="button"
-              onClick={onOpenPricing}
+              onClick={() => window.open(REPO_URL, "_blank", "noopener,noreferrer")}
               className="hidden rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
             >
               {t.navPricing}
@@ -1151,7 +1114,7 @@ export default function Landing({
               <Button
                 size="lg"
                 variant="outline"
-                onClick={onOpenPricing}
+                onClick={() => window.open(REPO_URL, "_blank", "noopener,noreferrer")}
                 className={cn(
                   "w-full text-base sm:w-auto",
                   theme.dark &&
@@ -1625,90 +1588,6 @@ export default function Landing({
           </div>
         </section>
 
-        {/* 9. Pricing teaser */}
-        <section className="border-y bg-muted/30">
-          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-            <Reveal className="mx-auto max-w-2xl text-center">
-              <Badge variant="outline" className="mb-4">
-                {t.pricingBadge}
-              </Badge>
-              <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-                <Phrased text={t.pricingHeading} />
-              </h2>
-              <p className="mt-4 text-muted-foreground">
-                <Phrased text={t.pricingSub} />
-              </p>
-            </Reveal>
-
-            <div className="mt-14 grid items-start gap-6 lg:grid-cols-3">
-              {plans.map((plan, i) => (
-                <Reveal key={plan.id} delay={i * 90} className="h-full">
-                  <Card
-                    className={cn(
-                      "relative flex h-full flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0",
-                      plan.highlight &&
-                        "border-violet-500/60 shadow-lg ring-1 ring-violet-500/30"
-                    )}
-                  >
-                    {plan.highlight && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge className="gap-1 bg-gradient-to-r from-violet-600 to-indigo-600">
-                          <Sparkles className="h-3 w-3" />
-                          {t.pricingRecommended}
-                        </Badge>
-                      </span>
-                    )}
-                    <CardHeader>
-                      <CardTitle className="text-xl">{plan.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{plan.tagline}</p>
-                      <div className="mt-4 flex items-baseline gap-1">
-                        <span className="text-4xl font-bold tracking-tight">
-                          {priceLabel(plan.price)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {priceSuffix(plan.price)}
-                        </span>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex flex-1 flex-col">
-                      <ul className="space-y-3 text-sm">
-                        {plan.features.map((feat) => (
-                          <li key={feat} className="flex items-start gap-2.5">
-                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
-                            <span className="text-muted-foreground">{feat}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <Button
-                        onClick={onOpenPricing}
-                        variant={plan.highlight ? "default" : "outline"}
-                        className={cn(
-                          "mt-7 w-full",
-                          plan.highlight &&
-                            "bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90"
-                        )}
-                      >
-                        {plan.price === 0 ? plan.cta : t.pricingChoose}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Reveal>
-              ))}
-            </div>
-
-            <div className="mt-10 text-center">
-              <Button
-                variant="ghost"
-                onClick={onOpenPricing}
-                className="gap-2 text-muted-foreground hover:text-foreground"
-              >
-                {t.pricingSeeDetails}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
         {/* 10. FAQ */}
         <section className="mx-auto max-w-3xl px-4 py-20 sm:px-6 sm:py-28">
           <Reveal className="mx-auto max-w-2xl text-center">
@@ -1767,7 +1646,7 @@ export default function Landing({
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={onOpenPricing}
+                  onClick={() => window.open(REPO_URL, "_blank", "noopener,noreferrer")}
                   className="w-full border-white/40 bg-transparent text-base text-white hover:bg-white/10 hover:text-white sm:w-auto"
                 >
                   {t.ctaSeePricing}
@@ -1805,7 +1684,7 @@ export default function Landing({
               </a>
               <button
                 type="button"
-                onClick={onOpenPricing}
+                onClick={() => window.open(REPO_URL, "_blank", "noopener,noreferrer")}
                 className="text-left text-muted-foreground transition-colors hover:text-foreground"
               >
                 {t.footerPricing}
@@ -1818,7 +1697,7 @@ export default function Landing({
                 {t.footerStudio}
               </button>
               <a
-                href="https://github.com/ilovewalking7/app-035"
+                href="https://github.com/ilovewalking7/lp-section-studio"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
@@ -1827,7 +1706,7 @@ export default function Landing({
                 {t.footerGithub}
               </a>
               <a
-                href="https://github.com/ilovewalking7/app-035"
+                href="https://github.com/ilovewalking7/lp-section-studio"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
@@ -1836,7 +1715,7 @@ export default function Landing({
                 {t.footerDocs}
               </a>
               <a
-                href="https://github.com/ilovewalking7/app-035"
+                href="https://github.com/ilovewalking7/lp-section-studio"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"

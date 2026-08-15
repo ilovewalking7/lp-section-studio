@@ -44,54 +44,6 @@ export const manifest: ManifestEntry[] = [
     "description": "KPI と前月比トレンドを表示するカード。"
   },
   {
-    "id": "ai-airesponse-card",
-    "path": "./demos/ai/AIResponseCard.tsx",
-    "name": "AI回答カード",
-    "category": "AI / チャット",
-    "description": "モデル名ヘッダーと操作フッター付きの回答カード。",
-    "align": "center"
-  },
-  {
-    "id": "ai-chat-thread",
-    "path": "./demos/ai/ChatThread.tsx",
-    "name": "チャットスレッド",
-    "category": "AI / チャット",
-    "description": "ユーザーとアシスタントが交互に並ぶ会話スレッド。",
-    "align": "center"
-  },
-  {
-    "id": "ai-command-palette",
-    "path": "./demos/ai/CommandPalette.tsx",
-    "name": "コマンドパレット",
-    "category": "AI / チャット",
-    "description": "検索でフィルタできる⌘K形式のコマンド一覧。",
-    "align": "center"
-  },
-  {
-    "id": "ai-model-picker",
-    "path": "./demos/ai/ModelPicker.tsx",
-    "name": "モデル選択",
-    "category": "AI / チャット",
-    "description": "バッジ付きでAIモデルを選べるドロップダウン。",
-    "align": "center"
-  },
-  {
-    "id": "ai-prompt-composer",
-    "path": "./demos/ai/PromptComposer.tsx",
-    "name": "プロンプト入力",
-    "category": "AI / チャット",
-    "description": "添付・モデル選択チップ付きの送信フォーム。",
-    "align": "center"
-  },
-  {
-    "id": "ai-streaming-message",
-    "path": "./demos/ai/StreamingMessage.tsx",
-    "name": "ストリーミング表示",
-    "category": "AI / チャット",
-    "description": "トークンを逐次表示する点滅カーソル付きの回答。",
-    "align": "center"
-  },
-  {
     "id": "ai2-agent-steps-trace",
     "path": "./demos/ai2/AgentStepsTrace.tsx",
     "name": "エージェント実行トレース",
@@ -370,6 +322,54 @@ export const manifest: ManifestEntry[] = [
       "chat",
       "animation"
     ]
+  },
+  {
+    "id": "ai-airesponse-card",
+    "path": "./demos/ai/AIResponseCard.tsx",
+    "name": "AI回答カード",
+    "category": "AI / チャット",
+    "description": "モデル名ヘッダーと操作フッター付きの回答カード。",
+    "align": "center"
+  },
+  {
+    "id": "ai-chat-thread",
+    "path": "./demos/ai/ChatThread.tsx",
+    "name": "チャットスレッド",
+    "category": "AI / チャット",
+    "description": "ユーザーとアシスタントが交互に並ぶ会話スレッド。",
+    "align": "center"
+  },
+  {
+    "id": "ai-command-palette",
+    "path": "./demos/ai/CommandPalette.tsx",
+    "name": "コマンドパレット",
+    "category": "AI / チャット",
+    "description": "検索でフィルタできる⌘K形式のコマンド一覧。",
+    "align": "center"
+  },
+  {
+    "id": "ai-model-picker",
+    "path": "./demos/ai/ModelPicker.tsx",
+    "name": "モデル選択",
+    "category": "AI / チャット",
+    "description": "バッジ付きでAIモデルを選べるドロップダウン。",
+    "align": "center"
+  },
+  {
+    "id": "ai-prompt-composer",
+    "path": "./demos/ai/PromptComposer.tsx",
+    "name": "プロンプト入力",
+    "category": "AI / チャット",
+    "description": "添付・モデル選択チップ付きの送信フォーム。",
+    "align": "center"
+  },
+  {
+    "id": "ai-streaming-message",
+    "path": "./demos/ai/StreamingMessage.tsx",
+    "name": "ストリーミング表示",
+    "category": "AI / チャット",
+    "description": "トークンを逐次表示する点滅カーソル付きの回答。",
+    "align": "center"
   },
   {
     "id": "analytics-analytics-overview",
@@ -6938,127 +6938,6 @@ export const manifest: ManifestEntry[] = [
     ]
   },
   {
-    "id": "hero-announcement-bar",
-    "path": "./demos/hero/AnnouncementBar.tsx",
-    "name": "アナウンスバー",
-    "category": "ヒーロー・LP",
-    "description": "リンクと閉じるボタンを備えた最上部の細いお知らせバナー（useStateで開閉）。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "hero",
-      "landing",
-      "announcement"
-    ],
-    "principle": "薄いグラデーション帯でページ上端に注意を一点だけ置く。閉じられる設計で押しつけ感を避け、CTAは矢印で前進を促す。"
-  },
-  {
-    "id": "hero-hero-bento",
-    "path": "./demos/hero/HeroBento.tsx",
-    "name": "ヒーロー（ベントグリッド）",
-    "category": "ヒーロー・LP",
-    "description": "左にコピー、右に大小さまざまな機能タイルを並べた非対称ベントグリッドのヒーロー。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "hero",
-      "landing",
-      "bento"
-    ],
-    "principle": "左の言葉と右の視覚情報をF型で分担。タイルの大小差がリズムを生み、最も伝えたい機能を最大面積で強調する。"
-  },
-  {
-    "id": "hero-hero-centered-glow",
-    "path": "./demos/hero/HeroCenteredGlow.tsx",
-    "name": "ヒーロー（中央スポットライト）",
-    "category": "ヒーロー・LP",
-    "description": "見出しの背後にやわらかなグロー／スポットライトを敷いた中央寄せヒーロー。上部にピル型のお知らせ（Vercel風）。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "hero",
-      "landing",
-      "glow"
-    ],
-    "principle": "暗い背景に上方からのグローで見出しを照らし、視線を中央へ一点集中。ピル型告知→見出し→CTAの縦の階層が明快。"
-  },
-  {
-    "id": "hero-hero-gradient-mesh",
-    "path": "./demos/hero/HeroGradientMesh.tsx",
-    "name": "ヒーロー（グラデーションメッシュ）",
-    "category": "ヒーロー・LP",
-    "description": "ぼかしたグラデーションブロブを重ねたメッシュ背景に、アイブロウ・大見出し・デュアルCTAを配置。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "hero",
-      "landing",
-      "gradient"
-    ],
-    "principle": "低彩度の背景に対し中央へ視線を集約。フォーカルポイントを単一CTAに絞り、メッシュは主張させず奥行きだけを担わせる。"
-  },
-  {
-    "id": "hero-hero-split-mockup",
-    "path": "./demos/hero/HeroSplitMockup.tsx",
-    "name": "ヒーロー（分割＋モックアップ）",
-    "category": "ヒーロー・LP",
-    "description": "左にコピー、右にCSSで組んだダッシュボード風モックアップ（ウィンドウクロム付き）を配置。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "hero",
-      "landing",
-      "mockup"
-    ],
-    "principle": "言葉だけでなく実体（製品UI）を見せて信頼を獲得。左→右の視線移動で約束と証拠を順に提示する。"
-  },
-  {
-    "id": "hero-hero-stats",
-    "path": "./demos/hero/HeroStats.tsx",
-    "name": "ヒーロー（実績ストリップ）",
-    "category": "ヒーロー・LP",
-    "description": "信頼を補強する大きな数字のストリップ（3〜4指標）を備えたヒーロー。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "hero",
-      "landing",
-      "stats"
-    ],
-    "principle": "大きな数字は瞬時に規模を伝えるアンカー。見出しで約束し、数字で裏づける二段構えで説得力を高める。"
-  },
-  {
-    "id": "hero-hero-waitlist",
-    "path": "./demos/hero/HeroWaitlist.tsx",
-    "name": "ヒーロー（ウェイトリスト）",
-    "category": "ヒーロー・LP",
-    "description": "アーリーアクセス登録用ヒーロー。見出し・メール入力・参加ボタンと登録済み人数のアバター列。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "hero",
-      "landing",
-      "waitlist"
-    ],
-    "principle": "社会的証明（登録済み人数とアバター）で参加への安心感を醸成。入力欄を単一の焦点にして離脱を防ぐ。"
-  },
-  {
-    "id": "hero-marquee-logos",
-    "path": "./demos/hero/MarqueeLogos.tsx",
-    "name": "ロゴマーキー",
-    "category": "ヒーロー・LP",
-    "description": "ダミーのブランドワードマークを横方向に無限スクロールさせるマーキー（CSSキーフレーム）。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "hero",
-      "landing",
-      "marquee",
-      "logos"
-    ],
-    "principle": "両端のフェードマスクで「続いている」感を出し、流れる動きが社会的証明の量を示唆。低彩度で本文の邪魔をしない。"
-  },
-  {
     "id": "hero2-announcement-bar-hero",
     "path": "./demos/hero2/AnnouncementBarHero.tsx",
     "name": "アナウンスバー・ヒーロー",
@@ -7317,6 +7196,127 @@ export const manifest: ManifestEntry[] = [
       "hero",
       "animation"
     ]
+  },
+  {
+    "id": "hero-announcement-bar",
+    "path": "./demos/hero/AnnouncementBar.tsx",
+    "name": "アナウンスバー",
+    "category": "ヒーロー・LP",
+    "description": "リンクと閉じるボタンを備えた最上部の細いお知らせバナー（useStateで開閉）。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "hero",
+      "landing",
+      "announcement"
+    ],
+    "principle": "薄いグラデーション帯でページ上端に注意を一点だけ置く。閉じられる設計で押しつけ感を避け、CTAは矢印で前進を促す。"
+  },
+  {
+    "id": "hero-hero-bento",
+    "path": "./demos/hero/HeroBento.tsx",
+    "name": "ヒーロー（ベントグリッド）",
+    "category": "ヒーロー・LP",
+    "description": "左にコピー、右に大小さまざまな機能タイルを並べた非対称ベントグリッドのヒーロー。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "hero",
+      "landing",
+      "bento"
+    ],
+    "principle": "左の言葉と右の視覚情報をF型で分担。タイルの大小差がリズムを生み、最も伝えたい機能を最大面積で強調する。"
+  },
+  {
+    "id": "hero-hero-centered-glow",
+    "path": "./demos/hero/HeroCenteredGlow.tsx",
+    "name": "ヒーロー（中央スポットライト）",
+    "category": "ヒーロー・LP",
+    "description": "見出しの背後にやわらかなグロー／スポットライトを敷いた中央寄せヒーロー。上部にピル型のお知らせ（Vercel風）。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "hero",
+      "landing",
+      "glow"
+    ],
+    "principle": "暗い背景に上方からのグローで見出しを照らし、視線を中央へ一点集中。ピル型告知→見出し→CTAの縦の階層が明快。"
+  },
+  {
+    "id": "hero-hero-gradient-mesh",
+    "path": "./demos/hero/HeroGradientMesh.tsx",
+    "name": "ヒーロー（グラデーションメッシュ）",
+    "category": "ヒーロー・LP",
+    "description": "ぼかしたグラデーションブロブを重ねたメッシュ背景に、アイブロウ・大見出し・デュアルCTAを配置。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "hero",
+      "landing",
+      "gradient"
+    ],
+    "principle": "低彩度の背景に対し中央へ視線を集約。フォーカルポイントを単一CTAに絞り、メッシュは主張させず奥行きだけを担わせる。"
+  },
+  {
+    "id": "hero-hero-split-mockup",
+    "path": "./demos/hero/HeroSplitMockup.tsx",
+    "name": "ヒーロー（分割＋モックアップ）",
+    "category": "ヒーロー・LP",
+    "description": "左にコピー、右にCSSで組んだダッシュボード風モックアップ（ウィンドウクロム付き）を配置。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "hero",
+      "landing",
+      "mockup"
+    ],
+    "principle": "言葉だけでなく実体（製品UI）を見せて信頼を獲得。左→右の視線移動で約束と証拠を順に提示する。"
+  },
+  {
+    "id": "hero-hero-stats",
+    "path": "./demos/hero/HeroStats.tsx",
+    "name": "ヒーロー（実績ストリップ）",
+    "category": "ヒーロー・LP",
+    "description": "信頼を補強する大きな数字のストリップ（3〜4指標）を備えたヒーロー。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "hero",
+      "landing",
+      "stats"
+    ],
+    "principle": "大きな数字は瞬時に規模を伝えるアンカー。見出しで約束し、数字で裏づける二段構えで説得力を高める。"
+  },
+  {
+    "id": "hero-hero-waitlist",
+    "path": "./demos/hero/HeroWaitlist.tsx",
+    "name": "ヒーロー（ウェイトリスト）",
+    "category": "ヒーロー・LP",
+    "description": "アーリーアクセス登録用ヒーロー。見出し・メール入力・参加ボタンと登録済み人数のアバター列。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "hero",
+      "landing",
+      "waitlist"
+    ],
+    "principle": "社会的証明（登録済み人数とアバター）で参加への安心感を醸成。入力欄を単一の焦点にして離脱を防ぐ。"
+  },
+  {
+    "id": "hero-marquee-logos",
+    "path": "./demos/hero/MarqueeLogos.tsx",
+    "name": "ロゴマーキー",
+    "category": "ヒーロー・LP",
+    "description": "ダミーのブランドワードマークを横方向に無限スクロールさせるマーキー（CSSキーフレーム）。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "hero",
+      "landing",
+      "marquee",
+      "logos"
+    ],
+    "principle": "両端のフェードマスクで「続いている」感を出し、流れる動きが社会的証明の量を示唆。低彩度で本文の邪魔をしない。"
   },
   {
     "id": "interaction-animated-counter",
@@ -8147,62 +8147,6 @@ export const manifest: ManifestEntry[] = [
     "principle": "下線のみの入力欄と広い余白が、記入を儀式のように感じさせ特別感を高める。"
   },
   {
-    "id": "marketing-ctabanner",
-    "path": "./demos/marketing/CTABanner.tsx",
-    "name": "CTAバナー",
-    "category": "マーケティング",
-    "description": "見出し・メール入力・送信ボタンを備えた行動喚起バンド。",
-    "align": "full"
-  },
-  {
-    "id": "marketing-faqaccordion",
-    "path": "./demos/marketing/FAQAccordion.tsx",
-    "name": "FAQアコーディオン",
-    "category": "マーケティング",
-    "description": "シェブロン回転と開閉アニメーションを備えたFAQアコーディオン。",
-    "align": "full"
-  },
-  {
-    "id": "marketing-feature-section",
-    "path": "./demos/marketing/FeatureSection.tsx",
-    "name": "機能セクション",
-    "category": "マーケティング",
-    "description": "大きな主役機能と補助カードを組み合わせた非対称ベント配置。",
-    "align": "full"
-  },
-  {
-    "id": "marketing-hero-saa-s",
-    "path": "./demos/marketing/HeroSaaS.tsx",
-    "name": "ヒーロー (SaaS)",
-    "category": "マーケティング",
-    "description": "アイブロウ・大見出し・CTA・社会的証明を備えたSaaSヒーロー。",
-    "align": "full"
-  },
-  {
-    "id": "marketing-logo-cloud",
-    "path": "./demos/marketing/LogoCloud.tsx",
-    "name": "ロゴクラウド",
-    "category": "マーケティング",
-    "description": "架空ブランドのワードマークで構成した「信頼の証」ロゴ列。",
-    "align": "full"
-  },
-  {
-    "id": "marketing-pricing-table",
-    "path": "./demos/marketing/PricingTable.tsx",
-    "name": "料金テーブル",
-    "category": "マーケティング",
-    "description": "月額/年額トグルで価格が切り替わる、推奨プラン強調の3段料金表。",
-    "align": "full"
-  },
-  {
-    "id": "marketing-testimonial-card",
-    "path": "./demos/marketing/TestimonialCard.tsx",
-    "name": "お客様の声カード",
-    "category": "マーケティング",
-    "description": "イニシャルアバターと所属を備えた上質な引用カード。",
-    "align": "center"
-  },
-  {
     "id": "marketing2-ctawith-proof",
     "path": "./demos/marketing2/CTAWithProof.tsx",
     "name": "社会的証明付きCTA",
@@ -8321,6 +8265,62 @@ export const manifest: ManifestEntry[] = [
       "carousel"
     ],
     "principle": "実名・所属・星評価を添えた推薦は信頼を高める。自動送りで複数の声を負担なく見せられる。"
+  },
+  {
+    "id": "marketing-ctabanner",
+    "path": "./demos/marketing/CTABanner.tsx",
+    "name": "CTAバナー",
+    "category": "マーケティング",
+    "description": "見出し・メール入力・送信ボタンを備えた行動喚起バンド。",
+    "align": "full"
+  },
+  {
+    "id": "marketing-faqaccordion",
+    "path": "./demos/marketing/FAQAccordion.tsx",
+    "name": "FAQアコーディオン",
+    "category": "マーケティング",
+    "description": "シェブロン回転と開閉アニメーションを備えたFAQアコーディオン。",
+    "align": "full"
+  },
+  {
+    "id": "marketing-feature-section",
+    "path": "./demos/marketing/FeatureSection.tsx",
+    "name": "機能セクション",
+    "category": "マーケティング",
+    "description": "大きな主役機能と補助カードを組み合わせた非対称ベント配置。",
+    "align": "full"
+  },
+  {
+    "id": "marketing-hero-saa-s",
+    "path": "./demos/marketing/HeroSaaS.tsx",
+    "name": "ヒーロー (SaaS)",
+    "category": "マーケティング",
+    "description": "アイブロウ・大見出し・CTA・社会的証明を備えたSaaSヒーロー。",
+    "align": "full"
+  },
+  {
+    "id": "marketing-logo-cloud",
+    "path": "./demos/marketing/LogoCloud.tsx",
+    "name": "ロゴクラウド",
+    "category": "マーケティング",
+    "description": "架空ブランドのワードマークで構成した「信頼の証」ロゴ列。",
+    "align": "full"
+  },
+  {
+    "id": "marketing-pricing-table",
+    "path": "./demos/marketing/PricingTable.tsx",
+    "name": "料金テーブル",
+    "category": "マーケティング",
+    "description": "月額/年額トグルで価格が切り替わる、推奨プラン強調の3段料金表。",
+    "align": "full"
+  },
+  {
+    "id": "marketing-testimonial-card",
+    "path": "./demos/marketing/TestimonialCard.tsx",
+    "name": "お客様の声カード",
+    "category": "マーケティング",
+    "description": "イニシャルアバターと所属を備えた上質な引用カード。",
+    "align": "center"
   },
   {
     "id": "marquee-avatar-marquee",
@@ -9698,124 +9698,6 @@ export const manifest: ManifestEntry[] = [
     "principle": "巨大な余白と整列で1点に視線を集め、説得力を生む。"
   },
   {
-    "id": "nav-breadcrumb",
-    "path": "./demos/nav/Breadcrumb.tsx",
-    "name": "パンくずリスト",
-    "category": "ナビゲーション",
-    "description": "区切り記号・中間の折りたたみ（オーバーフロー）・現在ページ表示を備えたパンくずナビ。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "navigation",
-      "breadcrumb"
-    ],
-    "principle": "現在地までの階層を可視化して方向感覚を与え（情報の匂い）、長い経路は中間を省略して幅を制御しつつ展開可能にする。"
-  },
-  {
-    "id": "nav-command-bar",
-    "path": "./demos/nav/CommandBar.tsx",
-    "name": "コマンドバー",
-    "category": "ナビゲーション",
-    "description": "useState で絞り込むインライン結果ドロップダウン付きの検索/コマンドバー。相対フレーム内に収まる。",
-    "align": "center",
-    "isNew": true,
-    "tags": [
-      "navigation",
-      "command",
-      "search"
-    ],
-    "principle": "入力に応じて選択肢を即時に絞り込むことで認知負荷を最小化し（ヒックの法則）、キーボード中心の操作で熟練ユーザーの速度を最大化する。"
-  },
-  {
-    "id": "nav-mega-menu-navbar",
-    "path": "./demos/nav/MegaMenuNavbar.tsx",
-    "name": "メガメニューナビ",
-    "category": "ナビゲーション",
-    "description": "ホバー/クリックでアイコン付きリンク列を展開する一流のメガメニュー。相対フレーム内に収まる。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "navigation",
-      "navbar",
-      "megamenu"
-    ],
-    "principle": "関連リンクを意味のある列にグループ化することで認知負荷を下げ（情報設計）、広いホバー面でフィッツの法則に従い選択を高速化する。"
-  },
-  {
-    "id": "nav-mobile-tab-bar",
-    "path": "./demos/nav/MobileTabBar.tsx",
-    "name": "モバイルタブバー",
-    "category": "ナビゲーション",
-    "description": "中央にFABを配したモバイル下部タブバー（4項目+アクティブ強調）。スマホ幅フレーム内に表示。",
-    "align": "center",
-    "isNew": true,
-    "tags": [
-      "navigation",
-      "mobile",
-      "tabbar"
-    ],
-    "principle": "主要導線を親指の届く下部に集約し（フィッツの法則/サムゾーン）、中央FABで第一級アクションを際立たせる。"
-  },
-  {
-    "id": "nav-pagination",
-    "path": "./demos/nav/Pagination.tsx",
-    "name": "ページネーション",
-    "category": "ナビゲーション",
-    "description": "前後ボタン・省略記号付きページ番号・アクティブページを useState で制御するページャ。",
-    "align": "center",
-    "isNew": true,
-    "tags": [
-      "navigation",
-      "pagination"
-    ],
-    "principle": "現在ページ周辺と端のみ表示して選択肢を絞り（ヒックの法則）、十分な当たり判定で誤タップを防ぐ（フィッツの法則）。"
-  },
-  {
-    "id": "nav-rich-footer",
-    "path": "./demos/nav/RichFooter.tsx",
-    "name": "リッチフッター",
-    "category": "ナビゲーション",
-    "description": "リンク列・ニュースレター入力・SNSアイコン・法務行を備えたマーケティング向けフッター。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "navigation",
-      "footer",
-      "marketing"
-    ],
-    "principle": "サイトの最終接点でリンクを意味カテゴリに整理し（情報設計）、ニュースレターで離脱前の再エンゲージを促す。"
-  },
-  {
-    "id": "nav-sidebar-nav",
-    "path": "./demos/nav/SidebarNav.tsx",
-    "name": "サイドバーナビ",
-    "category": "ナビゲーション",
-    "description": "セクション・アイコン・アクティブ状態・折りたたみグループ・ユーザーフッターを備えたアプリ用サイドバー。",
-    "align": "center",
-    "isNew": true,
-    "tags": [
-      "navigation",
-      "sidebar",
-      "app"
-    ],
-    "principle": "頻度の高い項目を上部に固定し、関連項目を折りたたみグループにまとめることで走査コストを削減（情報設計）。明確なアクティブ状態で現在地を即座に伝える。"
-  },
-  {
-    "id": "nav-sticky-ctabar",
-    "path": "./demos/nav/StickyCTABar.tsx",
-    "name": "固定CTAバー",
-    "category": "ナビゲーション",
-    "description": "相対フレーム下部に固定される、解除可能なアクションバー（購入/保存）。",
-    "align": "full",
-    "isNew": true,
-    "tags": [
-      "navigation",
-      "cta",
-      "sticky"
-    ],
-    "principle": "常に視界に残るアンカーで意思決定を後押しし（プログレッシブ・ディスクロージャ）、解除可能にすることで圧迫感を与えない。"
-  },
-  {
     "id": "nav2-animated-breadcrumb",
     "path": "./demos/nav2/AnimatedBreadcrumb.tsx",
     "name": "アニメーションパンくず",
@@ -10074,6 +9956,124 @@ export const manifest: ManifestEntry[] = [
       "navigation",
       "animation"
     ]
+  },
+  {
+    "id": "nav-breadcrumb",
+    "path": "./demos/nav/Breadcrumb.tsx",
+    "name": "パンくずリスト",
+    "category": "ナビゲーション",
+    "description": "区切り記号・中間の折りたたみ（オーバーフロー）・現在ページ表示を備えたパンくずナビ。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "navigation",
+      "breadcrumb"
+    ],
+    "principle": "現在地までの階層を可視化して方向感覚を与え（情報の匂い）、長い経路は中間を省略して幅を制御しつつ展開可能にする。"
+  },
+  {
+    "id": "nav-command-bar",
+    "path": "./demos/nav/CommandBar.tsx",
+    "name": "コマンドバー",
+    "category": "ナビゲーション",
+    "description": "useState で絞り込むインライン結果ドロップダウン付きの検索/コマンドバー。相対フレーム内に収まる。",
+    "align": "center",
+    "isNew": true,
+    "tags": [
+      "navigation",
+      "command",
+      "search"
+    ],
+    "principle": "入力に応じて選択肢を即時に絞り込むことで認知負荷を最小化し（ヒックの法則）、キーボード中心の操作で熟練ユーザーの速度を最大化する。"
+  },
+  {
+    "id": "nav-mega-menu-navbar",
+    "path": "./demos/nav/MegaMenuNavbar.tsx",
+    "name": "メガメニューナビ",
+    "category": "ナビゲーション",
+    "description": "ホバー/クリックでアイコン付きリンク列を展開する一流のメガメニュー。相対フレーム内に収まる。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "navigation",
+      "navbar",
+      "megamenu"
+    ],
+    "principle": "関連リンクを意味のある列にグループ化することで認知負荷を下げ（情報設計）、広いホバー面でフィッツの法則に従い選択を高速化する。"
+  },
+  {
+    "id": "nav-mobile-tab-bar",
+    "path": "./demos/nav/MobileTabBar.tsx",
+    "name": "モバイルタブバー",
+    "category": "ナビゲーション",
+    "description": "中央にFABを配したモバイル下部タブバー（4項目+アクティブ強調）。スマホ幅フレーム内に表示。",
+    "align": "center",
+    "isNew": true,
+    "tags": [
+      "navigation",
+      "mobile",
+      "tabbar"
+    ],
+    "principle": "主要導線を親指の届く下部に集約し（フィッツの法則/サムゾーン）、中央FABで第一級アクションを際立たせる。"
+  },
+  {
+    "id": "nav-pagination",
+    "path": "./demos/nav/Pagination.tsx",
+    "name": "ページネーション",
+    "category": "ナビゲーション",
+    "description": "前後ボタン・省略記号付きページ番号・アクティブページを useState で制御するページャ。",
+    "align": "center",
+    "isNew": true,
+    "tags": [
+      "navigation",
+      "pagination"
+    ],
+    "principle": "現在ページ周辺と端のみ表示して選択肢を絞り（ヒックの法則）、十分な当たり判定で誤タップを防ぐ（フィッツの法則）。"
+  },
+  {
+    "id": "nav-rich-footer",
+    "path": "./demos/nav/RichFooter.tsx",
+    "name": "リッチフッター",
+    "category": "ナビゲーション",
+    "description": "リンク列・ニュースレター入力・SNSアイコン・法務行を備えたマーケティング向けフッター。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "navigation",
+      "footer",
+      "marketing"
+    ],
+    "principle": "サイトの最終接点でリンクを意味カテゴリに整理し（情報設計）、ニュースレターで離脱前の再エンゲージを促す。"
+  },
+  {
+    "id": "nav-sidebar-nav",
+    "path": "./demos/nav/SidebarNav.tsx",
+    "name": "サイドバーナビ",
+    "category": "ナビゲーション",
+    "description": "セクション・アイコン・アクティブ状態・折りたたみグループ・ユーザーフッターを備えたアプリ用サイドバー。",
+    "align": "center",
+    "isNew": true,
+    "tags": [
+      "navigation",
+      "sidebar",
+      "app"
+    ],
+    "principle": "頻度の高い項目を上部に固定し、関連項目を折りたたみグループにまとめることで走査コストを削減（情報設計）。明確なアクティブ状態で現在地を即座に伝える。"
+  },
+  {
+    "id": "nav-sticky-ctabar",
+    "path": "./demos/nav/StickyCTABar.tsx",
+    "name": "固定CTAバー",
+    "category": "ナビゲーション",
+    "description": "相対フレーム下部に固定される、解除可能なアクションバー（購入/保存）。",
+    "align": "full",
+    "isNew": true,
+    "tags": [
+      "navigation",
+      "cta",
+      "sticky"
+    ],
+    "principle": "常に視界に残るアンカーで意思決定を後押しし（プログレッシブ・ディスクロージャ）、解除可能にすることで圧迫感を与えない。"
   },
   {
     "id": "neumorphism-soft-button-set",

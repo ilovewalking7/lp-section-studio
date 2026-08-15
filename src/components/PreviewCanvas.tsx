@@ -5,10 +5,8 @@ import {
   FileCode2,
   Lightbulb,
   Loader2,
-  Lock,
   Monitor,
   Smartphone,
-  Sparkles,
   Tablet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,13 +17,6 @@ import {
   generateVanillaHtml,
   generateDynamicVanillaHtml,
 } from "@/lib/vanilla";
-import {
-  FREE_DAILY_COPY_LIMIT,
-  getTodayCopies,
-  incTodayCopies,
-  hasFullAccess,
-  type PlanId,
-} from "@/lib/plan";
 import type { Lang } from "@/lib/i18n";
 import { tDesc, tName } from "@/registry/i18n";
 import { variantLabel } from "@/lib/variant";
@@ -40,11 +31,6 @@ const PREVIEW_COPY = {
     code: "コード",
     vanilla: "バニラ",
     advanced: "上級",
-    vanillaProTitle: "バニラHTMLエクスポートは Pro 機能です",
-    vanillaProBody: "React 不要の素のHTMLを書き出して、どこにでも貼れます。",
-    upgrade: "Pro にアップグレード",
-    limitReached: `本日のコピー上限（${FREE_DAILY_COPY_LIMIT}回）に達しました。`,
-    makeUnlimited: "無制限にする",
     principle: "なぜ効く？ — 設計意図",
     collection: "コレクション",
     vStatic: "静的",
@@ -55,11 +41,6 @@ const PREVIEW_COPY = {
     code: "Code",
     vanilla: "Vanilla",
     advanced: "Advanced",
-    vanillaProTitle: "Vanilla HTML export is a Pro feature",
-    vanillaProBody: "Export plain HTML (no React) and paste it anywhere.",
-    upgrade: "Upgrade to Pro",
-    limitReached: `Daily copy limit (${FREE_DAILY_COPY_LIMIT}) reached.`,
-    makeUnlimited: "Go unlimited",
     principle: "Why it works — design intent",
     collection: "Collection",
     vStatic: "Static",
@@ -81,81 +62,12 @@ function Spinner() {
   );
 }
 
-/** Pro 限定機能（バニラHTMLエクスポート）のロック表示 */
-function ProLock({ lang, onUpgrade }: { lang: Lang; onUpgrade: () => void }) {
-  const c = PREVIEW_COPY[lang];
-  return (
-    <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/30 p-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
-        <Lock className="size-5" />
-      </div>
-      <div>
-        <p className="font-medium">{c.vanillaProTitle}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{c.vanillaProBody}</p>
-      </div>
-      <Button onClick={onUpgrade} className="gap-1.5">
-        <Sparkles className="size-4" /> {c.upgrade}
-      </Button>
-    </div>
-  );
-}
-
-/** Free のコピー上限の案内（残数 / 上限到達） */
-function CopyLimitNote({
-  lang,
-  blocked,
-  onUpgrade,
-}: {
-  lang: Lang;
-  blocked: boolean;
-  onUpgrade: () => void;
-}) {
-  const c = PREVIEW_COPY[lang];
-  const remaining = Math.max(0, FREE_DAILY_COPY_LIMIT - getTodayCopies());
-  return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center gap-2 rounded-md border p-2.5 text-xs",
-        blocked
-          ? "border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400"
-          : "border-border bg-muted/30 text-muted-foreground"
-      )}
-    >
-      <Lock className="size-3.5 shrink-0" />
-      {blocked ? (
-        <span>{c.limitReached}</span>
-      ) : lang === "ja" ? (
-        <span>
-          Free プラン：本日のコピーは残り <b>{remaining}</b> /{" "}
-          {FREE_DAILY_COPY_LIMIT} 回
-        </span>
-      ) : (
-        <span>
-          Free: <b>{remaining}</b> / {FREE_DAILY_COPY_LIMIT} copies left today
-        </span>
-      )}
-      <Button
-        size="sm"
-        variant="ghost"
-        className="ml-auto h-7 gap-1 text-amber-600 hover:text-amber-700 dark:text-amber-400"
-        onClick={onUpgrade}
-      >
-        <Sparkles className="size-3.5" /> {c.makeUnlimited}
-      </Button>
-    </div>
-  );
-}
-
 export function PreviewCanvas({
   entry,
-  plan,
   lang,
-  onUpgrade,
 }: {
   entry: RegistryEntry;
-  plan: PlanId;
   lang: Lang;
-  onUpgrade: () => void;
 }) {
   const c = PREVIEW_COPY[lang];
   const variant = variantLabel(entry);
@@ -166,20 +78,6 @@ export function PreviewCanvas({
   const [vanillaMode, setVanillaMode] = useState<"static" | "dynamic">(
     "static"
   );
-  const [copyBlocked, setCopyBlocked] = useState(false);
-
-  const pro = hasFullAccess(plan);
-
-  // Free のコピー上限ゲート（Pro/Studio は無制限）
-  const onBeforeCopy = () => {
-    if (pro) return true;
-    if (getTodayCopies() >= FREE_DAILY_COPY_LIMIT) {
-      setCopyBlocked(true);
-      return false;
-    }
-    incTodayCopies();
-    return true;
-  };
 
   // コンポーネント本体を遅延ロード（選択時に初めて該当チャンクを取得）
   const Demo = useMemo(
@@ -212,7 +110,7 @@ export function PreviewCanvas({
 
   // バニラタブを開いた時だけHTMLを生成（Pro 限定機能）
   useEffect(() => {
-    if (tab !== "vanilla" || vanilla !== null || !pro) return;
+    if (tab !== "vanilla" || vanilla !== null) return;
     let alive = true;
     const build =
       vanillaMode === "dynamic"
@@ -304,7 +202,7 @@ export function PreviewCanvas({
               variant={tab === "vanilla" ? "secondary" : "ghost"}
               onClick={() => setTab("vanilla")}
             >
-              {pro ? <FileCode2 /> : <Lock className="text-amber-500" />}{" "}
+              <FileCode2 />{" "}
               {c.vanilla}
             </Button>
           </div>
@@ -352,19 +250,8 @@ export function PreviewCanvas({
         source === null ? (
           <Spinner />
         ) : (
-          <div className="space-y-2">
-            {!pro && (
-              <CopyLimitNote
-                lang={lang}
-                blocked={copyBlocked}
-                onUpgrade={onUpgrade}
-              />
-            )}
-            <CodeBlock code={source} onBeforeCopy={onBeforeCopy} />
-          </div>
+          <CodeBlock code={source} />
         )
-      ) : !pro ? (
-        <ProLock lang={lang} onUpgrade={onUpgrade} />
       ) : (
         <div className="space-y-2">
           <div className="flex w-fit rounded-md border p-0.5">
@@ -423,7 +310,7 @@ export function PreviewCanvas({
           {vanilla === null ? (
             <Spinner />
           ) : (
-            <CodeBlock code={vanilla} onBeforeCopy={onBeforeCopy} />
+            <CodeBlock code={vanilla} />
           )}
         </div>
       )}
