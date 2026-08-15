@@ -31,7 +31,7 @@
 | `CLAUDE.md` | マーカー間のみ追記/更新。マーカー外の本文は保持。無ければ BOOST ブロックだけで新規作成 |
 | `.claude/settings.json` | SessionStart に `boost-profile.sh` を**追記**（既存フック・`enabledPlugins`・マーケットプレイス保持）。**既存 settings.json への追記は `node` が必要**（無い場合は追記されず手動手順を表示） |
 
-冪等（BOOST 既導入なら何度でも安全に更新）。**この app-035 自身がこの方法で BOOST を
+冪等（BOOST 既導入なら何度でも安全に更新）。**この lp-section-studio 自身がこの方法で BOOST を
 共存追加した実例**です（Component Studio + crawler と同居）。
 
 ---
@@ -44,9 +44,9 @@
 ```text
 このリポジトリに BOOST を「既存ツールを上書きせず共存」で追加して。手順:
 
-1. ilovewalking7/app-035 をこのセッションに add_repo してクローン（BOOST の実ファイルと
+1. ilovewalking7/lp-section-studio をこのセッションに add_repo してクローン（BOOST の実ファイルと
    install-boost.sh はそこにある）。
-2. 実行: bash /workspace/app-035/scripts/install-boost.sh <このリポジトリの絶対パス> <PROFILE>
+2. 実行: bash /workspace/lp-section-studio/scripts/install-boost.sh <このリポジトリの絶対パス> <PROFILE>
    - "REFUSING to overwrite" が出たら、列挙された既存ファイルは BOOST と同名の別物。中断して
      内容を確認し、私（ユーザー）に報告すること（勝手に FORCE=1 しない）。
 3. 下の「検証チェックリスト」を全項目実施。1つでも既存が壊れていたらコミットせず中止して報告。
@@ -56,7 +56,7 @@
 ## 手順 B — 端末で（CLI）
 
 ```bash
-bash /path/to/app-035/scripts/install-boost.sh /path/to/target-repo fable
+bash /path/to/lp-section-studio/scripts/install-boost.sh /path/to/target-repo fable
 #   3引数目: fable(フロンティア/チームモード) | opus | sonnet
 #   衝突を承知で上書きするときだけ: FORCE=1 bash ... （退避後に上書き）
 ```

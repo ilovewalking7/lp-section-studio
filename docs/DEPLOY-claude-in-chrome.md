@@ -1,7 +1,7 @@
 # Claude in Chrome 用 指示書 — Cloudflare へデプロイ＆Private URL発行
 
 > これは **Claude in Chrome（ブラウザ操作エージェント）** にそのまま渡せる runbook です。
-> 目的: GitHub リポジトリ `ilovewalking7/app-035`（Vite製 Component Studio）を
+> 目的: GitHub リポジトリ `ilovewalking7/lp-section-studio`（Vite製 Component Studio）を
 > **Cloudflare Pages** にデプロイし、**Cloudflare Access** で「自分のメールだけ」に制限する。
 > 所要 約10〜15分・無料枠内。
 
@@ -25,7 +25,7 @@
 ## 前提（人間に先にやってもらう）
 
 - ブラウザで **Cloudflare にログイン済み**（無料アカウント）にしておく。
-- **GitHub にログイン済み**で、`ilovewalking7/app-035` にアクセスできる状態。
+- **GitHub にログイン済み**で、`ilovewalking7/lp-section-studio` にアクセスできる状態。
 - デプロイ対象ブランチを決める：**おすすめ `main`**（PR #1 をマージ済みの場合）。未マージなら `claude/custom-component-tool-aploq1`。
 
 ---
@@ -36,11 +36,11 @@
 2. 左メニュー **Workers & Pages** を開く。
 3. **Create** → **Pages** タブ → **Connect to Git**（または「Import an existing Git repository」）をクリック。
 4. **GitHub を接続/認可**：認可ポップアップが出たら **人間に承認を依頼**。承認後、リポジトリ一覧から
-   **`ilovewalking7/app-035`** を選び **Begin setup**。
+   **`ilovewalking7/lp-section-studio`** を選び **Begin setup**。
 5. セットアップ画面で以下を入力：
    | 項目 | 入力値 |
    |---|---|
-   | Project name | （人間に確認。例 `app-035-studio`。これが URL になる） |
+   | Project name | （人間に確認。例 `lp-section-studio`。これが URL になる） |
    | Production branch | **`main`**（未マージなら `claude/custom-component-tool-aploq1`）— **人間に確認** |
    | Framework preset | **Vite** |
    | Build command | `npm run build` |

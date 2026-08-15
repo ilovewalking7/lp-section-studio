@@ -61,10 +61,14 @@ https://lp-section-studio.pages.dev
 
 ## 3. デプロイ後にやること
 
-### ① README の URL を差し替える
+### ① URL の差し替え（実施済み）
 
-`README.md` と `docs/USE-IN-OTHER-REPOS.md` に `<あなたのデプロイ先>` という
-プレースホルダがあります。発行された URL に置き換えてください。
+`docs/USE-IN-OTHER-REPOS.md` の URL は `lp-section-studio.pages.dev` に置換済みです。
+canonical / og:url / sitemap.xml / robots.txt も同じ URL を指すよう修正済み。
+
+> **注意**: `scripts/prerender.mjs` の `ORIGIN` が canonical と og:url を決めます。
+> ドメインを変える場合はここか環境変数 `VITE_SITE_URL` を必ず更新してください。
+> 古いままだと **canonical が別サイトを指し、検索評価がそちらに流れます**。
 
 ```
 npx shadcn@latest add https://lp-section-studio.pages.dev/r/wafu-ryokan-hero.json

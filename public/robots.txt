@@ -4,4 +4,4 @@ Allow: /
 # Registry JSON is a machine API (npx shadcn add) — no need to index.
 Disallow: /r/
 
-Sitemap: https://app-035-studio.pages.dev/sitemap.xml
+Sitemap: https://lp-section-studio.pages.dev/sitemap.xml

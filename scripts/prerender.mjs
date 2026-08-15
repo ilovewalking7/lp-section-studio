@@ -19,7 +19,7 @@ const ROOT = resolve(__dirname, "..");
 const DIST = resolve(ROOT, "dist");
 const SSR_DIR = resolve(ROOT, "dist-ssr");
 // VITE_SITE_URL が設定されていればそれを優先する（未設定時は既定値のまま・挙動据え置き）。
-const ORIGIN = process.env.VITE_SITE_URL ?? "https://app-035-studio.pages.dev";
+const ORIGIN = process.env.VITE_SITE_URL ?? "https://lp-section-studio.pages.dev";
 
 /** 各ルートのメタ（日本語をデフォルト言語として静的化）。 */
 const ROUTES = [
