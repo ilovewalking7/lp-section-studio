@@ -6,8 +6,10 @@
  * 毎回作らせるのではなく、既にある物を返すだけなので、返ってくる結果は
  * 常に同じで、a11y 検査も横スクロール検査も通った状態のものが来る。
  *
- * 収録内容は data/components.json（ビルド時に同梱）。無料版は 100 個で、
- * すべて React 無しで動くもの。全 880 個は買い切り版に入る。
+ * 収録内容は data/components.json（ビルド時に同梱）。880 個すべてが入っていて、
+ * うち 397 個は React も Babel も無しで動く静的 HTML として取り出せる。
+ *
+ * MIT。https://github.com/ilovewalking7/lp-section-studio
  */
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -23,17 +25,33 @@ const data = JSON.parse(
 const items = data.items;
 const byId = new Map(items.map((i) => [i.id, i]));
 
-/** 買い切り版への案内。無料版でだけ出す。 */
-const UPSELL =
-  data.edition === "free"
-    ? `\n\n---\nこの MCP には ${data.included} 個（すべて React 不要）が入っています。` +
-      `全 ${data.total} 個は買い切り版に収録。`
-    : "";
+/**
+ * 以前は無料版で買い切り版への案内を出していたが、880 個すべてを MIT で公開した
+ * ので廃止した。空文字のまま残してあるのは、各ツールの応答末尾に付けている
+ * `${UPSELL}` を消し漏らしても壊れないようにするため。
+ */
+const UPSELL = "";
 
-const server = new McpServer({
-  name: "lp-section-studio",
-  version: "0.1.0",
-});
+const server = new McpServer(
+  {
+    name: "lp-section-studio",
+    version: "0.1.0",
+    title: "LP Section Studio",
+  },
+  {
+    instructions:
+      `LP Section Studio — ランディングページ用の UI コンポーネント ${data.included} 個を、` +
+      `生成せずに取り出すためのサーバです。同じ id を指定すれば常に同じ物が返ります。\n\n` +
+      `うち ${data.standaloneIncluded} 個は React も Babel も不要で、get_component_html が` +
+      `返す静的 HTML をそのまま貼れば動きます（PHP / Rails / Hugo / WordPress でも可）。\n\n` +
+      `収録している部品はすべて axe-core・コントラスト・キーボード操作・横スクロール` +
+      `（幅375px）の検査を CI で毎回通しています。\n\n` +
+      `ライセンス: MIT（商用利用・改変・再配布可）\n` +
+      `ソース: https://github.com/ilovewalking7/lp-section-studio\n` +
+      `デモ: https://lp-section-studio.pages.dev\n` +
+      `作者: Yoggy (https://x.com/yoggydev)`,
+  }
+);
 
 server.registerTool(
   "search_components",

@@ -65,7 +65,13 @@ Runtime dependencies: `react`, `react-dom`, `lucide-react`, `clsx`,
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Use it commercially, modify it, redistribute it —
+the only condition is that you keep the license text.
+
+**About the name.** The MIT license covers the code, not the name.
+"LP Section Studio" and its logo identify this project and its author.
+Fork it freely, but please release your fork under a different name so people
+can tell which one is upstream. (Same convention as Rust, Node.js and Firefox.)
 
 ---
 
@@ -114,7 +120,14 @@ Reactコンポーネント集は、SEO重視の静的サイトや、既存のPHP
 
 ## ライセンス
 
-MIT。[LICENSE](LICENSE) を参照してください。
+MIT。[LICENSE](LICENSE) を参照してください。商用利用・改変・再配布はすべて自由で、
+条件はライセンス文を残すことだけです。
+
+**名前について。** MIT が対象にしているのはコードであって、名前ではありません。
+「LP Section Studio」の名称とロゴは、このプロジェクトと作者を指すものとして使っています。
+フォークは自由ですが、**フォークは別の名前で公開してください。**
+どちらが本家か、見つけた人が判断できなくなるためです。
+（Rust・Node.js・Firefox と同じ慣行です）
 
 ---
 

@@ -95,13 +95,15 @@ claude mcp add lp-section-studio -- npx -y lp-section-studio-mcp
 
 ## 収録内容
 
-版によって収録数が違います。手元のものがどちらかは、
-`data/components.json` の `edition` で分かります。
+**880 個すべて**が入っています。版の区別はありません
+（以前あった無料版／買い切り版の区分は廃止しました）。
 
-| 版 | `edition` | 収録数 |
-| --- | --- | --- |
-| 無料版（MCP のみ） | `free` | **100 個**。すべて React 不要。28 カテゴリに散らして選択（1カテゴリ最大4個） |
-| 買い切り版 | `full` | **880 個**（うち React 不要が 397 個）。39 カテゴリ |
+| 項目 | 数 |
+| --- | --- |
+| コンポーネント総数 | **880 個**（39 カテゴリ） |
+| React 不要（静的 HTML で書き出せる） | **397 個** |
+| 自動テスト | 2,661 件。変更のたびに全件実行 |
+| axe-core 検査 | 881 件 / 違反 0 |
 
 ## 依存
 
@@ -111,13 +113,25 @@ claude mcp add lp-section-studio -- npx -y lp-section-studio-mcp
 
 静的 HTML 版は Tailwind だけで動きますが、`bg-card` `text-muted-foreground`
 `bg-primary` などは**このコンポーネント集のデザイントークン**で、素の Tailwind
-には存在しません。買い切り版の HTML はこの定義を `<head>` に埋め込んだ状態で
-配布しているのでそのまま表示されます。自分でトークンを組み込む場合は、
-買い切り版の `components/theme/` にある `tailwind.config.js` と `tokens.css`
-を使ってください。
+には存在しません。`get_component_html` が返す HTML はこの定義を `<head>` に
+埋め込んだ状態で返るので、そのまま貼れば表示されます。自分のプロジェクトに
+トークンを組み込む場合は、リポジトリの `src/components/theme/` にある
+`tailwind.config.js` と `tokens.css` を使ってください。
 
 ## ライセンス
 
-同梱の `LICENSE` を参照してください。無料版（`edition: free` の 100 個）は
-個人利用・非商用の範囲、買い切り版（`edition: full` の 880 個）は商用利用可
-です。いずれもコンポーネント自体の再配布・再販はできません。
+**MIT** です。880 個すべてが商用利用・改変・再配布可で、条件はライセンス文を
+残すことだけです。詳細はリポジトリの [LICENSE](../LICENSE) を参照してください。
+
+**名前について。** MIT が対象にしているのはコードであって、名前ではありません。
+「LP Section Studio」の名称は、このプロジェクトと作者を指すものとして使っています。
+フォークは自由ですが、フォークは別の名前で公開してください。
+
+## 作った人
+
+**Yoggy** — 個人開発者。AI で作って、実際に動かして確かめたことだけ書いています。
+
+- X: [@yoggydev](https://x.com/yoggydev)
+- note: [note.com/yoggydev](https://note.com/yoggydev)
+- デモ: [lp-section-studio.pages.dev](https://lp-section-studio.pages.dev)
+- リポジトリ: [github.com/ilovewalking7/lp-section-studio](https://github.com/ilovewalking7/lp-section-studio)

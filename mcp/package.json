@@ -1,11 +1,33 @@
 {
   "name": "lp-section-studio-mcp",
   "version": "0.1.0",
+  "author": {
+    "name": "Yoggy",
+    "url": "https://x.com/yoggydev"
+  },
+  "license": "MIT",
+  "homepage": "https://lp-section-studio.pages.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilovewalking7/lp-section-studio.git",
+    "directory": "mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/ilovewalking7/lp-section-studio/issues"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "ui-components",
+    "landing-page",
+    "tailwindcss",
+    "react",
+    "html",
+    "accessibility",
+    "claude-code"
+  ],
   "description": "検証済みUIコンポーネントをMCP経由で取り出す（生成しない）。React不要の静的HTMLにも対応。",
   "scripts": {},
-  "keywords": [],
-  "author": "",
-  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.4.3"
