@@ -42,11 +42,15 @@ npm run build    # production build
 npm test         # 2,661 tests
 ```
 
-## Three ways to use a component
+## Four ways to use a component
 
 1. **Copy-paste** — open the studio, pick a component, copy the source
 2. **shadcn registry** — `npx shadcn add <url>` pulls it into another project
 3. **Static HTML** — export plain HTML with no React (397 components support this)
+4. **Just open a URL** — every component is served as a standalone page:
+   [`/html/marketing-pricing-table.html`](https://lp-section-studio.pages.dev/html/marketing-pricing-table.html).
+   `Ctrl+U` and copy, or `fetch()` it — CORS is open, and
+   [`/html/index.json`](https://lp-section-studio.pages.dev/html/index.json) lists all 880 with their ids.
 
 ## MCP server
 
@@ -106,11 +110,15 @@ npm run build    # 本番ビルド
 npm test         # 2,661テスト
 ```
 
-## 3つの取り込み経路
+## 4つの取り込み経路
 
 1. **コピペ** — スタジオで選んでソースをコピー
 2. **shadcn レジストリ** — `npx shadcn add <url>` で別プロジェクトに直接取り込み
 3. **静的HTML** — React 抜きの HTML を書き出す（397個が対応）
+4. **URLを開くだけ** — 全880個が単体ページとして配信されています。
+   [`/html/marketing-pricing-table.html`](https://lp-section-studio.pages.dev/html/marketing-pricing-table.html)
+   のように `id` を入れれば開けます。`Ctrl+U` でソースをコピーするか、`fetch()` で取得してください（CORS 許可済み）。
+   id の一覧は [`/html/index.json`](https://lp-section-studio.pages.dev/html/index.json) にあります。
 
 ## なぜ「React 不要」が効くのか
 

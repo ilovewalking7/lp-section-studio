@@ -1,6 +1,15 @@
 # Cloudflare Pages headers
+
 # レジストリ JSON は他リポジトリの shadcn CLI / ブラウザから取得されるため、
 # CORS を許可しつつ短めにキャッシュする。
 /r/*
   Access-Control-Allow-Origin: *
   Cache-Control: public, max-age=300
+
+# 静的HTML（React不要の397件を含む880件）。
+# 人がブラウザで直接開くほか、スクリプトや AI エージェントが fetch して
+# そのまま貼れるようにするため、CORS を許可する。
+# 中身は id 単位で不変（変わる時は id ごと変わる）なので長めにキャッシュ。
+/html/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
