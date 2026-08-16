@@ -61,6 +61,14 @@ export function formatHtml(html: string): string {
 }
 
 /**
+ * 書き出す HTML の先頭に入れる出所表示。HTML コメント1行なので、不要なら消してよい
+ *（MIT なので表示は義務ではない）。貼られた先で「これは何で、どこの物か」を
+ * 辿れるようにするためだけに入れている。
+ */
+const CREDIT =
+  "<!-- LP Section Studio · MIT · https://github.com/ilovewalking7/lp-section-studio -->";
+
+/**
  * そのまま保存して開ける完結HTML（Tailwind CDN + デザイントークン付き）に包む。
  *
  * bg-card / text-muted-foreground などは**このプロジェクト固有のトークン**で、
@@ -76,6 +84,7 @@ function wrapDocument(inner: string): string {
     .map((l) => "    " + l)
     .join("\n");
   return `<!doctype html>
+${CREDIT}
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
@@ -281,6 +290,7 @@ export function generateDynamicVanillaHtml(demoSource: string): string {
   );
 
   return `<!doctype html>
+${CREDIT}
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
